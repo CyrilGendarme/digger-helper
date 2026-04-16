@@ -24,7 +24,7 @@ env/
 # ─── EasyOCR model cache ──────────────────────────────────
 .EasyOCR/
 
-# ─── Node / React Native ──────────────────────────────────
+# ─── Node / React ──────────────────────────────────
 node_modules/
 .pnp
 .pnp.js
