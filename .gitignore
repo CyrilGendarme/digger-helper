@@ -1,0 +1,60 @@
+# ─── Python ───────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+.Python
+
+# ─── Environment ──────────────────────────────────────────
+.env
+!.env.example
+
+# ─── FastAPI / Uvicorn ────────────────────────────────────
+*.log
+
+# ─── EasyOCR model cache ──────────────────────────────────
+.EasyOCR/
+
+# ─── Node / React Native ──────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ─── Expo ─────────────────────────────────────────────────
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+mobile/.expo-shared/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# ─── TypeScript ───────────────────────────────────────────
+*.tsbuildinfo
+
+# ─── OS ───────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ─── IDEs ─────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
