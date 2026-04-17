@@ -58,3 +58,7 @@ desktop.ini
 .idea/
 *.swp
 *.swo
+
+
+# ─── Selenium / WebDriver ───────────────────────────────────────────────────
+**/selenium_chrome_profile/
