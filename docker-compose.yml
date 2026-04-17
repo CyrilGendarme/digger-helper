@@ -1,0 +1,34 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: digger-helper-backend:local
+    container_name: digger-backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    volumes:
+      # Hot-reload: mount source (comment out for production-like testing)
+      - ./backend:/app
+      # Persist EasyOCR model cache across container restarts (~500 MB download once)
+      - easyocr-cache:/home/appuser/.EasyOCR
+    # Override CMD to enable hot-reload during development
+    command: >
+      uvicorn main:app
+        --host 0.0.0.0
+        --port 8000
+        --reload
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  easyocr-cache:
