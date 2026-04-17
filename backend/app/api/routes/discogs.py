@@ -1,12 +1,15 @@
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.api.deps import require_auth
 from app.models.record import DiscogsSearchResponse
 from app.services.discogs_service import search_releases
 
-router = APIRouter(prefix="/discogs", tags=["discogs"])
+router = APIRouter(
+    prefix="/discogs", tags=["discogs"], dependencies=[Depends(require_auth)]
+)
 logger = logging.getLogger(__name__)
 
 

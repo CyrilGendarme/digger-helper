@@ -10,22 +10,40 @@ import {
 import { useDispatch } from 'react-redux';
 import { login } from '../../store/slices/authSlice';
 import { AppDispatch } from '../../store';
+import { API_BASE_URL, setAuthToken } from '../../services/api';
 import styles from './styles';
-
-const PASSCODE = process.env.EXPO_PUBLIC_PASSCODE ?? '1234';
 
 const LoginScreen: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
   const [input, setInput] = useState('');
   const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = useCallback(() => {
-    if (input === PASSCODE) {
-      setError(false);
-      dispatch(login());
-    } else {
+  const handleSubmit = useCallback(async () => {
+    if (!input) return;
+    setLoading(true);
+    setError(false);
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ passcode: input }),
+      });
+
+      if (!response.ok) {
+        setError(true);
+        setInput('');
+        return;
+      }
+
+      const data = await response.json();
+      setAuthToken(data.access_token);
+      dispatch(login(data.access_token));
+    } catch {
       setError(true);
       setInput('');
+    } finally {
+      setLoading(false);
     }
   }, [input, dispatch]);
 
@@ -54,6 +72,7 @@ const LoginScreen: React.FC = () => {
           onSubmitEditing={handleSubmit}
           returnKeyType="done"
           accessibilityLabel="Passcode input"
+          editable={!loading}
         />
 
         {error && (
@@ -68,8 +87,9 @@ const LoginScreen: React.FC = () => {
           activeOpacity={0.8}
           accessibilityRole="button"
           accessibilityLabel="Unlock"
+          disabled={loading}
         >
-          <Text style={styles.buttonText}>Unlock</Text>
+          <Text style={styles.buttonText}>{loading ? '…' : 'Unlock'}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

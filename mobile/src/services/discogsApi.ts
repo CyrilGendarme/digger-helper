@@ -1,4 +1,4 @@
-import { API_BASE_URL } from './api';
+import { API_BASE_URL, getAuthHeaders } from './api';
 import { DiscogsSearchResponse } from '../types/record';
 
 interface DiscogsQuery {
@@ -15,7 +15,9 @@ export async function searchDiscogs(query: DiscogsQuery): Promise<DiscogsSearchR
   if (query.catno) params.set('catno', query.catno);
   if (query.limit) params.set('limit', String(query.limit));
 
-  const response = await fetch(`${API_BASE_URL}/discogs/search?${params.toString()}`);
+  const response = await fetch(`${API_BASE_URL}/discogs/search?${params.toString()}`, {
+    headers: { ...getAuthHeaders() },
+  });
   if (!response.ok) {
     const detail = await response.text();
     throw new Error(`Discogs search failed (${response.status}): ${detail}`);

@@ -116,7 +116,6 @@ Scan the QR code with the **Expo Go** app on your phone (iOS or Android).
 | Variable | Description |
 |---|---|
 | `EXPO_PUBLIC_API_URL` | Full URL to the backend API, e.g. `http://192.168.1.42:8000/api/v1` |
-| `EXPO_PUBLIC_PASSCODE` | PIN code used to unlock the app (default: `1234`) |
 
 ---
 

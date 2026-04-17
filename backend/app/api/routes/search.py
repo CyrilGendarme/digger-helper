@@ -1,13 +1,16 @@
 import logging
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 
+from app.api.deps import require_auth
 from app.models.record import MediaSearchResponse
 from app.services.youtube_service import search_youtube
 from app.services.soundcloud_service import search_soundcloud
 from app.services.bandcamp_service import search_bandcamp
 
-router = APIRouter(prefix="/search", tags=["search"])
+router = APIRouter(
+    prefix="/search", tags=["search"], dependencies=[Depends(require_auth)]
+)
 logger = logging.getLogger(__name__)
 
 

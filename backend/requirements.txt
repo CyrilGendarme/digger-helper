@@ -3,6 +3,9 @@ fastapi
 uvicorn[standard]
 python-multipart
 
+# Authentication
+python-jose[cryptography]
+
 # Configuration
 python-dotenv
 pydantic

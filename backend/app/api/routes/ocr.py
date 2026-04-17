@@ -1,11 +1,12 @@
 import logging
 
-from fastapi import APIRouter, File, UploadFile, HTTPException
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException
 
+from app.api.deps import require_auth
 from app.models.ocr import OCRResponse
 from app.services.ocr_service import extract_text
 
-router = APIRouter(prefix="/ocr", tags=["ocr"])
+router = APIRouter(prefix="/ocr", tags=["ocr"], dependencies=[Depends(require_auth)])
 logger = logging.getLogger(__name__)
 
 ALLOWED_MIME = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}

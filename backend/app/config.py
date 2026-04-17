@@ -11,6 +11,11 @@ class Settings(BaseSettings):
     # CORS — comma-separated origins, e.g. "http://localhost:8081,exp://..."
     allowed_origins: str = "*"
 
+    # Authentication
+    app_passcode: str = "1234"  # override in .env: APP_PASSCODE=...
+    secret_key: str = "change-me-in-production"  # override in .env: SECRET_KEY=...
+    token_expire_days: int = 30
+
     # Discogs — use a personal access token (simpler than OAuth)
     # Get one at: https://www.discogs.com/settings/developers
     discogs_token: str = ""
