@@ -1,0 +1,73 @@
+name: Mobile CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mobile/**"
+      - ".github/workflows/mobile.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "mobile/**"
+      - ".github/workflows/mobile.yml"
+
+defaults:
+  run:
+    working-directory: mobile
+
+jobs:
+  type-check-and-lint:
+    name: TypeScript & ESLint
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript type-check
+        run: npx tsc --noEmit
+
+      - name: Lint with ESLint
+        run: npx eslint "src/**/*.{ts,tsx}" --max-warnings=0
+
+  eas-build-preview:
+    name: EAS Build (preview) — iOS & Android
+    runs-on: ubuntu-latest
+    # Only run on pushes to main (not on every PR to save EAS build minutes)
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: type-check-and-lint
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build Android (preview)
+        run: eas build --platform android --profile preview --non-interactive
+
+      - name: Build iOS (preview)
+        run: eas build --platform ios --profile preview --non-interactive
