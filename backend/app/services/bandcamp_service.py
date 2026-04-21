@@ -2,12 +2,16 @@ import os
 import re
 import unicodedata
 import time
+import logging
 
 from .chrome_helpers import get_or_attach_driver
 
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+
+
+logger = logging.getLogger(__name__)
 
 
 def get_bandcamp_info(
@@ -21,13 +25,23 @@ def get_bandcamp_info(
     query = " ".join(query.split())
     query = query.lower()
     query = query.replace(" ", "%20")
+    search_url = f"https://bandcamp.com/search?q={query}&item_type="
+
+    logger.info(
+        "Bandcamp scrape start | name=%r artist=%r record_ref=%r query=%r",
+        name,
+        artist,
+        record_ref,
+        query,
+    )
 
     # Wait for driver to be ready before navigating
     WebDriverWait(driver, 30).until(
         lambda d: d.execute_script("return document.readyState") == "complete"
     )
 
-    driver.get(f"https://bandcamp.com/search?q={query}&item_type=")
+    driver.get(search_url)
+    logger.debug("Bandcamp navigation complete | url=%s", search_url)
 
     #  Wait for page to be fully loaded (specifically the results list)
     wait = WebDriverWait(driver, 15)
@@ -40,6 +54,7 @@ def get_bandcamp_info(
 
     # Get all <li> elements inside the <ul>
     li_elements = ul_element.find_elements(By.TAG_NAME, "li")
+    logger.info("Bandcamp raw results container | li_count=%d", len(li_elements))
 
     results = []
 
@@ -65,8 +80,10 @@ def get_bandcamp_info(
 
         except Exception as e:
             # Skip malformed entries (ads, missing fields, etc.)
-            print(f"Skipping item due to error: {e}")
+            logger.debug("Bandcamp skipping malformed result item | error=%s", e)
             continue
+
+    logger.info("Bandcamp parsed album results | count=%d", len(results))
 
     return results
 
@@ -118,15 +135,19 @@ def add_bandcamp_record_price(
             item["price"] = price
 
         except Exception as e:
-            print(
-                f"Could not retrieve price for {item['title']} by {item['artist']}: {e}"
+            logger.debug(
+                "Bandcamp price lookup failed | title=%r artist=%r url=%s error=%s",
+                item.get("title", ""),
+                item.get("artist", ""),
+                item.get("href", ""),
+                e,
             )
             continue
 
     return bandcamp_info
 
 
-def search_bandcamp(query: str, limit: int = 5) -> list[dict]:
+def search_bandcamp( name="", artist="", record_ref="", limit: int = 5) -> list[dict]:
     """
     Entry point called by the FastAPI route.
 
@@ -134,36 +155,51 @@ def search_bandcamp(query: str, limit: int = 5) -> list[dict]:
     them, and returns a list of MediaLink-compatible dicts with keys:
       title, artist, href, price
     """
-    import logging
     from app.models.record import MediaLink, Platform
 
-    logger = logging.getLogger(__name__)
-    logger.info("Bandcamp search | query=%r limit=%d", query, limit)
-
-    # Split "Artist - Album" into separate components for better filtering.
-    # If no separator is found, treat the whole string as the name.
-    if " - " in query:
-        parts = query.split(" - ", 1)
-        artist_q = parts[0].strip()
-        name_q = parts[1].strip()
-    else:
-        artist_q = ""
-        name_q = query
-
+    logger.info("Bandcamp search | name=%r artist=%r record_ref=%r limit=%d", name, artist, record_ref, limit)
     profile_dir = os.path.join(os.path.dirname(__file__), "selenium_chrome_profile")
     driver = None
     try:
-        (driver, _) = get_or_attach_driver(
-            width=1280,
-            height=800,
-            DEBUG_PORT=9223,  # use a different port from any interactive session
-            CHROME_PROFILE_DIR=profile_dir,
-            CHROME_DEV_CONSOLE=False,
-            HEADLESS_MODE=True,
-            shall_include_process=True,
-        )
+        try:
+            (driver, _) = get_or_attach_driver(
+                width=1280,
+                height=800,
+                DEBUG_PORT=9223,  # use a different port from any interactive session
+                CHROME_PROFILE_DIR=profile_dir,
+                CHROME_DEV_CONSOLE=False,
+                HEADLESS_MODE=True,
+                HEADLESS_USE_PROFILE=True,
+                shall_include_process=True,
+            )
+            logger.debug(
+                "Bandcamp browser ready | headless=%s use_profile=%s profile_dir=%s",
+                True,
+                True,
+                profile_dir,
+            )
+        except Exception:
+            logger.warning(
+                "Bandcamp browser startup failed with profile; retrying without profile"
+            )
+            (driver, _) = get_or_attach_driver(
+                width=1280,
+                height=800,
+                DEBUG_PORT=9223,
+                CHROME_PROFILE_DIR=profile_dir,
+                CHROME_DEV_CONSOLE=False,
+                HEADLESS_MODE=True,
+                HEADLESS_USE_PROFILE=False,
+                shall_include_process=True,
+            )
+            logger.debug(
+                "Bandcamp browser ready | headless=%s use_profile=%s",
+                True,
+                False,
+            )
 
-        raw = get_bandcamp_info(driver, name=name_q, artist=artist_q)
+        raw = get_bandcamp_info(driver, name=name, artist=artist, record_ref=record_ref)
+        logger.info("Bandcamp scrape completed | raw_count=%d", len(raw))
 
         # Bandcamp subhead is "by Artist Name" — strip the prefix so that
         # clean_record_list_result's exact-match and the display title are clean.
@@ -172,11 +208,13 @@ def search_bandcamp(query: str, limit: int = 5) -> list[dict]:
             if a.lower().startswith("by "):
                 item["artist"] = a[3:].strip()
 
-        results = clean_record_list_result(raw, name=name_q, artist=artist_q)
+        results = clean_record_list_result(raw, name=name, artist=artist)
+        logger.info("Bandcamp filtered results | count=%d", len(results))
 
         # Fetch digital prices for the items we will actually return.
         # add_bandcamp_record_price sleeps 2 s per item — apply only to the slice.
         sliced = results[:limit]
+        logger.debug("Bandcamp sliced results | count=%d limit=%d", len(sliced), limit)
         add_bandcamp_record_price(driver, sliced)
 
         links: list[MediaLink] = []
@@ -201,8 +239,14 @@ def search_bandcamp(query: str, limit: int = 5) -> list[dict]:
         logger.info("Bandcamp search | found %d results", len(links))
         return links
 
-    except Exception as exc:
-        logger.error("Bandcamp search failed | %s", exc)
+    except Exception:
+        logger.exception(
+            "Bandcamp search failed | name=%r artist=%r record_ref=%r limit=%d",
+            name,
+            artist,
+            record_ref,
+            limit,
+        )
         return []
 
     finally:

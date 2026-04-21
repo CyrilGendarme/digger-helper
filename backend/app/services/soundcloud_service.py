@@ -12,7 +12,7 @@ from app.models.record import MediaLink, Platform
 logger = logging.getLogger(__name__)
 
 
-def search_soundcloud(query: str, limit: int = 5) -> List[MediaLink]:
+def search_soundcloud(query: str, limit: int = 3) -> List[MediaLink]:
     logger.info("SoundCloud search | query=%r limit=%d", query, limit)
     client = SoundCloud()
     results = client.search_tracks(query)

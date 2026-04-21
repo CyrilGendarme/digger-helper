@@ -113,6 +113,7 @@ def get_or_attach_driver(
     CHROME_PROFILE_DIR: str,
     CHROME_DEV_CONSOLE: bool,
     HEADLESS_MODE: bool = False,
+    HEADLESS_USE_PROFILE: bool = True,
     shall_include_process: bool = False,
 ) -> webdriver.Chrome | tuple[webdriver.Chrome, subprocess.Popen | None]:
 
@@ -128,11 +129,30 @@ def get_or_attach_driver(
         options.add_argument("--headless=new")
         options.add_argument("--disable-gpu")
         options.add_argument(f"--window-size={width},{height}")
-        options.add_argument(f"--user-data-dir={CHROME_PROFILE_DIR}")
+        if HEADLESS_USE_PROFILE:
+            options.add_argument(f"--user-data-dir={CHROME_PROFILE_DIR}")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-dev-tools")
+        options.add_argument("--remote-allow-origins=*")
 
-        driver = webdriver.Chrome(options=options)
+        try:
+            driver = webdriver.Chrome(options=options)
+        except Exception:
+            # Some Linux builds fail with --headless=new; retry with legacy headless.
+            legacy_options = Options()
+            legacy_options.add_argument("--headless")
+            legacy_options.add_argument("--disable-gpu")
+            legacy_options.add_argument(f"--window-size={width},{height}")
+            if HEADLESS_USE_PROFILE:
+                legacy_options.add_argument(f"--user-data-dir={CHROME_PROFILE_DIR}")
+            legacy_options.add_argument("--no-sandbox")
+            legacy_options.add_argument("--disable-dev-shm-usage")
+            legacy_options.add_argument("--disable-extensions")
+            legacy_options.add_argument("--disable-dev-tools")
+            legacy_options.add_argument("--remote-allow-origins=*")
+            driver = webdriver.Chrome(options=legacy_options)
 
         if shall_include_process:
             return driver, None

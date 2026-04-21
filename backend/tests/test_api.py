@@ -143,7 +143,8 @@ async def test_media_search_mocked(client: AsyncClient):
          patch("app.api.routes.search.search_soundcloud", return_value=[]), \
          patch("app.api.routes.search.search_bandcamp", return_value=[]):
         response = await client.get(
-            "/api/v1/search/media", params={"q": "Pink Floyd Money"}
+            "/api/v1/search/media",
+            params={"artist": "Pink Floyd", "record": "Money"},
         )
 
     assert response.status_code == 200
@@ -172,7 +173,10 @@ async def test_media_search_service_failure_is_non_fatal(client: AsyncClient):
     with patch("app.api.routes.search.search_youtube", side_effect=Exception("YouTube down")), \
          patch("app.api.routes.search.search_soundcloud", return_value=[sc_link]), \
          patch("app.api.routes.search.search_bandcamp", return_value=[]):
-        response = await client.get("/api/v1/search/media", params={"q": "test"})
+        response = await client.get(
+            "/api/v1/search/media",
+            params={"artist": "test", "record": "track"},
+        )
 
     assert response.status_code == 200
     data = response.json()
@@ -195,7 +199,10 @@ async def test_media_search_bandcamp_price_field_present(client: AsyncClient):
     with patch("app.api.routes.search.search_youtube", return_value=[]), \
          patch("app.api.routes.search.search_soundcloud", return_value=[]), \
          patch("app.api.routes.search.search_bandcamp", return_value=[bc_link]):
-        response = await client.get("/api/v1/search/media", params={"q": "Quantic Mango"})
+        response = await client.get(
+            "/api/v1/search/media",
+            params={"artist": "Quantic", "record": "Mango"},
+        )
 
     assert response.status_code == 200
     links = response.json()["links"]
@@ -208,7 +215,10 @@ async def test_media_search_all_services_empty_still_200(client: AsyncClient):
     with patch("app.api.routes.search.search_youtube", return_value=[]), \
          patch("app.api.routes.search.search_soundcloud", return_value=[]), \
          patch("app.api.routes.search.search_bandcamp", return_value=[]):
-        response = await client.get("/api/v1/search/media", params={"q": "xyznonexistent"})
+        response = await client.get(
+            "/api/v1/search/media",
+            params={"artist": "xyz", "record": "nonexistent"},
+        )
 
     assert response.status_code == 200
     assert response.json()["links"] == []
