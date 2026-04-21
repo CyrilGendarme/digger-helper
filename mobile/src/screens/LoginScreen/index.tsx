@@ -10,8 +10,10 @@ import {
 import { useDispatch } from 'react-redux';
 import { login } from '../../store/slices/authSlice';
 import { AppDispatch } from '../../store';
-import { API_BASE_URL, setAuthToken } from '../../services/api';
+import { buildApiUrl, setAuthToken } from '../../services/api';
 import styles from './styles';
+
+const PASSCODE_REGEX = /^[A-Za-z0-9]{10}$/;
 
 const LoginScreen: React.FC = () => {
   const dispatch = useDispatch<AppDispatch>();
@@ -20,11 +22,14 @@ const LoginScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = useCallback(async () => {
-    if (!input) return;
+    if (!PASSCODE_REGEX.test(input)) {
+      setError(true);
+      return;
+    }
     setLoading(true);
     setError(false);
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+      const response = await fetch(buildApiUrl('/auth/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ passcode: input }),
@@ -61,12 +66,15 @@ const LoginScreen: React.FC = () => {
           value={input}
           onChangeText={(v) => {
             setError(false);
-            setInput(v);
+            const cleaned = v.replace(/[^A-Za-z0-9]/g, '');
+            setInput(cleaned);
           }}
           secureTextEntry
-          keyboardType="number-pad"
-          maxLength={12}
-          placeholder="••••"
+          keyboardType="default"
+          autoCapitalize="none"
+          autoCorrect={false}
+          maxLength={10}
+          placeholder="A1B2C3D4E5"
           placeholderTextColor="#555"
           autoFocus
           onSubmitEditing={handleSubmit}
@@ -77,7 +85,7 @@ const LoginScreen: React.FC = () => {
 
         {error && (
           <Text style={styles.errorText} accessibilityRole="alert">
-            Incorrect passcode. Try again.
+            Passcode must be 10 letters/numbers, then match server passcode.
           </Text>
         )}
 

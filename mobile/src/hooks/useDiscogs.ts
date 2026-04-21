@@ -39,19 +39,20 @@ export function useDiscogs() {
         dispatch(discogsFailure(e instanceof Error ? e.message : 'Discogs error'));
       }
 
-      // ── Step 2: build media query ────────────────────────────────────────
+      // ── Step 2: build media query fields ─────────────────────────────────
       // Prefer Discogs first-result metadata; fall back to raw input.
-      const fromDiscogs = [firstArtist, firstTitle].filter(Boolean).join(' ');
-      const fromInput   = [info.artist_name, info.album_name].filter(Boolean).join(' ')
-        || info.record_ref
-        || '';
-      const q = fromDiscogs || fromInput;
-      if (!q) return;
+      const mediaArtist = firstArtist || info.artist_name || '';
+      const mediaRecord = firstTitle || info.album_name || info.record_ref || '';
+      if (!mediaArtist || !mediaRecord) return;
 
       // ── Step 3: media search ─────────────────────────────────────────────
       dispatch(mediaStart());
       try {
-        const res = await searchMedia(q);
+        const res = await searchMedia({
+          artist: mediaArtist,
+          record: mediaRecord,
+          record_ref: info.record_ref || undefined,
+        });
         dispatch(mediaSuccess(res.links));
       } catch (e: unknown) {
         dispatch(mediaFailure(e instanceof Error ? e.message : 'Media search error'));
