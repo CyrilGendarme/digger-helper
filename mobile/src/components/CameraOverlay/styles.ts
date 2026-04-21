@@ -1,8 +1,8 @@
 import { StyleSheet } from 'react-native';
 
 const OVERLAY_COLOR = 'rgba(0,0,0,0.55)';
-const FRAME_W = 310; // wide rectangle for record-ref labels
-const FRAME_H = 90;
+export const FRAME_W = 310; // wide rectangle for record-ref labels
+export const FRAME_H = 90;
 
 const styles = StyleSheet.create({
   container: {

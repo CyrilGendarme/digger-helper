@@ -11,7 +11,7 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useSelector } from 'react-redux';
@@ -32,6 +32,7 @@ const FIELD_TYPES: { value: FieldType; label: string }[] = [
   { value: 'record_ref', label: '🔖 Record ref' },
   { value: 'unknown', label: '❓ Unknown / skip' },
 ];
+const MANUAL_FIELD_TYPES = FIELD_TYPES.filter((f) => f.value !== 'unknown');
 
 // ── Assign modal ─────────────────────────────────────────────────────────────
 interface AssignModalProps {
@@ -81,16 +82,20 @@ interface AddManualModalProps {
 
 const AddManualModal: React.FC<AddManualModalProps> = ({ visible, onAdd, onClose }) => {
   const [text, setText] = useState('');
-  const [fieldType, setFieldType] = useState<FieldType>('unknown');
+  const [fieldType, setFieldType] = useState<FieldType>('record_ref');
 
   const handleAdd = () => {
     if (!text.trim()) {
       Alert.alert('Empty', 'Please enter some text first.');
       return;
     }
+    if (fieldType === 'unknown') {
+      Alert.alert('Invalid type', 'Please choose Artist, Album, or Record ref.');
+      return;
+    }
     onAdd({ text: text.trim(), fieldType });
     setText('');
-    setFieldType('unknown');
+    setFieldType('record_ref');
     onClose();
   };
 
@@ -112,7 +117,7 @@ const AddManualModal: React.FC<AddManualModalProps> = ({ visible, onAdd, onClose
           />
           <Text style={styles.modalSubtitle}>Field type:</Text>
           <ScrollView>
-            {FIELD_TYPES.map(({ value, label }) => (
+            {MANUAL_FIELD_TYPES.map(({ value, label }) => (
               <TouchableOpacity
                 key={value}
                 style={[
@@ -139,18 +144,20 @@ const AddManualModal: React.FC<AddManualModalProps> = ({ visible, onAdd, onClose
 // ── Main screen ───────────────────────────────────────────────────────────────
 const LabelScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  const route = useRoute();
   const blocks = useSelector((state: RootState) => state.capture.blocks);
   const { fields, manualFields, reset, init, assign, remove, addManual, removeManual } = useLabel();
 
-  // Reset and re-populate from OCR blocks every time this screen comes into focus
+  // Open Label empty by default, but prefill from OCR when explicitly coming from scan flow.
   useFocusEffect(
     useCallback(() => {
       reset();
-      if (blocks.length > 0) {
+      const shouldPrefill = (route.params as RootStackParamList['Label'])?.prefillFromOcr;
+      if (shouldPrefill && blocks.length > 0) {
         init(blocks.map((b) => b.text));
       }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [blocks]),
+    }, [blocks, route.params]),
   );
 
   // Assign-type modal state

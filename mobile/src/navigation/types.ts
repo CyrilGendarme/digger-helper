@@ -6,7 +6,7 @@ export type AuthStackParamList = {
 
 export type RootStackParamList = {
   Capture: undefined;
-  Label: undefined;
+  Label: { prefillFromOcr?: boolean } | undefined;
   Info: undefined;
   Player: { url: string; title: string; platform: Platform };
 };

@@ -24,7 +24,7 @@ const AppNavigator: React.FC = () => {
           initialRouteName="Capture"
           screenOptions={{ headerStyle: { backgroundColor: '#111' }, headerTintColor: '#fff' }}
         >
-          <AppStack.Screen name="Capture" component={CaptureScreen} options={{ title: 'Scan Sleeve' }} />
+          <AppStack.Screen name="Capture" component={CaptureScreen} options={{ title: 'Scan Record Ref' }} />
           <AppStack.Screen name="Label" component={LabelScreen} options={{ title: 'Label Fields' }} />
           <AppStack.Screen name="Info" component={InfoScreen} options={{ title: 'Record Info' }} />
           <AppStack.Screen

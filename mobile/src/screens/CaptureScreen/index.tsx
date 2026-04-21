@@ -8,6 +8,7 @@ import {
   ScrollView,
   Linking,
   Platform,
+  type LayoutRectangle,
 } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useDispatch } from 'react-redux';
@@ -18,6 +19,7 @@ import CameraOverlay from '../../components/CameraOverlay';
 import { useOcr } from '../../hooks/useOcr';
 import { setImageUri } from '../../store/slices/captureSlice';
 import type { RootStackParamList } from '../../navigation/types';
+import { cropToOverlayFrame } from '../../utils/cropToOverlayFrame';
 import styles from './styles';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Capture'>;
@@ -26,6 +28,7 @@ const CaptureScreen: React.FC = () => {
   const cameraRef = useRef<CameraView>(null);
   const [permission, requestPermission] = useCameraPermissions();
   const [capturing, setCapturing] = useState(false);
+  const [previewLayout, setPreviewLayout] = useState<LayoutRectangle | null>(null);
   const dispatch = useDispatch();
   const navigation = useNavigation<Nav>();
   const { runOcr, loading, error } = useOcr();
@@ -42,18 +45,27 @@ const CaptureScreen: React.FC = () => {
         skipProcessing: Platform.OS === 'android',
       });
       if (!photo?.uri) throw new Error('No photo returned from camera.');
-      dispatch(setImageUri(photo.uri));
-      await runOcr(photo.uri);
-      navigation.navigate('Label');
+
+      const finalUri =
+        previewLayout && photo.width && photo.height
+          ? await cropToOverlayFrame(
+              { uri: photo.uri, width: photo.width, height: photo.height },
+              previewLayout,
+            )
+          : photo.uri;
+
+      dispatch(setImageUri(finalUri));
+      await runOcr(finalUri);
+      navigation.navigate('Label', { prefillFromOcr: true });
     } catch (e: unknown) {
       Alert.alert('Error', e instanceof Error ? e.message : 'Capture failed.');
     } finally {
       setCapturing(false);
     }
-  }, [capturing, loading, dispatch, runOcr, navigation]);
+  }, [capturing, loading, dispatch, runOcr, navigation, previewLayout]);
 
   const handleManual = useCallback(() => {
-    navigation.navigate('Label');
+    navigation.navigate('Label', { prefillFromOcr: false });
   }, [navigation]);
 
   const handleOpenSettings = useCallback(() => {
@@ -118,6 +130,7 @@ const CaptureScreen: React.FC = () => {
         ref={cameraRef}
         style={styles.camera}
         facing="back"
+        onLayout={(e) => setPreviewLayout(e.nativeEvent.layout)}
         // Prevent auto-focus tap from being blocked by the overlay
         onCameraReady={() => {/* camera is ready */}}
       >
