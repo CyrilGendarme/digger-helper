@@ -10,7 +10,7 @@ A mobile app for vinyl record diggers. Point your phone at a record sleeve or la
 📷 Scan  →  ✏️ Review  →  🔍 Look up  →  🎵 Listen
 ```
 
-1. **Scan** — photograph the record sleeve or label. EasyOCR extracts the text automatically.
+1. **Scan** — photograph the record sleeve or label. Tesseract OCR extracts the text automatically.
 2. **Review** — confirm or edit the detected catalog reference and fields.
 3. **Look up** — the backend queries Discogs for release details (tracklist, label, format, market price).
 4. **Listen** — results from YouTube, SoundCloud, and Bandcamp appear below. Tap any link to open a built-in player.
@@ -21,7 +21,7 @@ A mobile app for vinyl record diggers. Point your phone at a record sleeve or la
 
 | Feature | Detail |
 |---|---|
-| Camera OCR | Powered by [EasyOCR](https://github.com/JaidedAI/EasyOCR) — no cloud subscription needed |
+| Camera OCR | Powered by [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) — no cloud subscription needed |
 | Discogs lookup | Catalog data, tracklist, label, format, and lowest market price |
 | YouTube | Video results via the Data API or web scraping fallback |
 | SoundCloud | Track search via the public API |
@@ -71,6 +71,8 @@ The API is available at `http://localhost:8000`.
 **Without Docker**
 
 ```bash
+sudo apt-get update && sudo apt-get install -y tesseract-ocr tesseract-ocr-eng
+
 cd backend
 python -m venv .venv
 # Windows
@@ -145,7 +147,7 @@ npm test
 |---|---|
 | Mobile | [Expo](https://expo.dev) ~54 · React Native · TypeScript · Redux Toolkit |
 | Backend | [FastAPI](https://fastapi.tiangolo.com) · Python 3.13 · Uvicorn |
-| OCR | [EasyOCR](https://github.com/JaidedAI/EasyOCR) |
+| OCR | [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) |
 | Bandcamp scraping | Selenium + Chrome |
 | Containerisation | Docker + Docker Compose |
 | Backend tests | pytest + pytest-asyncio · httpx |

@@ -20,7 +20,7 @@ for _noisy in (
     "httpcore",
     "urllib3",
     "discogs_client",
-    "easyocr",
+    "pytesseract",
     "selenium",
     "selenium.webdriver",
     "urllib3.connectionpool",

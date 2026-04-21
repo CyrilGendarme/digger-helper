@@ -13,7 +13,7 @@ pydantic-settings
 
 # Image processing & OCR
 Pillow
-easyocr
+pytesseract
 
 # Discogs
 python3-discogs-client

@@ -1,4 +1,5 @@
 import logging
+import re
 import secrets
 from datetime import datetime, timedelta, timezone
 
@@ -10,6 +11,7 @@ from app.config import settings
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
+PASSCODE_PATTERN = re.compile(r"^[A-Za-z0-9]{10}$")
 
 
 class LoginRequest(BaseModel):
@@ -23,6 +25,19 @@ class TokenResponse(BaseModel):
 
 @router.post("/login", response_model=TokenResponse)
 def login(body: LoginRequest) -> TokenResponse:
+    if not PASSCODE_PATTERN.fullmatch(body.passcode):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Passcode must be exactly 10 alphanumeric characters.",
+        )
+
+    if not PASSCODE_PATTERN.fullmatch(settings.app_passcode):
+        logger.error("[auth/login] APP_PASSCODE is misconfigured; expected 10 alphanumeric chars")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Server auth configuration error.",
+        )
+
     # Constant-time comparison to prevent timing attacks
     if not secrets.compare_digest(body.passcode, settings.app_passcode):
         logger.warning("[auth/login] failed attempt")

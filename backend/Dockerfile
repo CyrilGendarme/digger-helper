@@ -3,12 +3,6 @@ FROM python:3.11-slim AS builder
 
 WORKDIR /app
 
-# System deps required for easyocr / OpenCV
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgl1 \
-    libglib2.0-0 \
-    && rm -rf /var/lib/apt/lists/*
-
 COPY requirements.txt .
 RUN pip install --no-cache-dir --upgrade pip \
     && pip install --no-cache-dir -r requirements.txt
@@ -17,6 +11,11 @@ RUN pip install --no-cache-dir --upgrade pip \
 FROM python:3.11-slim AS runtime
 
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    && rm -rf /var/lib/apt/lists/*
 
 # Copy system libs installed in builder
 COPY --from=builder /usr/lib /usr/lib
@@ -32,8 +31,5 @@ USER appuser
 COPY --chown=appuser:appuser . .
 
 EXPOSE 8000
-
-# EasyOCR model cache — persist this directory between container restarts
-VOLUME ["/home/appuser/.EasyOCR"]
 
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "1"]
