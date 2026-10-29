@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   Alert,
   ScrollView,
 } from 'react-native';
-import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
+import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
 import { useSelector } from 'react-redux';
@@ -24,6 +24,7 @@ import type { RootStackParamList } from '../../navigation/types';
 import styles from './styles';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Label'>;
+type LabelRoute = RouteProp<RootStackParamList, 'Label'>;
 
 // ── Constants ────────────────────────────────────────────────────────────────
 const FIELD_TYPES: { value: FieldType; label: string }[] = [
@@ -33,6 +34,9 @@ const FIELD_TYPES: { value: FieldType; label: string }[] = [
   { value: 'unknown', label: '❓ Unknown / skip' },
 ];
 const MANUAL_FIELD_TYPES = FIELD_TYPES.filter((f) => f.value !== 'unknown');
+const FIELD_TYPE_LABEL = Object.fromEntries(
+  FIELD_TYPES.map(({ value, label }) => [value, label]),
+) as Record<FieldType, string>;
 
 // ── Assign modal ─────────────────────────────────────────────────────────────
 interface AssignModalProps {
@@ -144,21 +148,22 @@ const AddManualModal: React.FC<AddManualModalProps> = ({ visible, onAdd, onClose
 // ── Main screen ───────────────────────────────────────────────────────────────
 const LabelScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
-  const route = useRoute();
+  const route = useRoute<LabelRoute>();
+  const shouldPrefill = route.params?.prefillFromOcr ?? false;
   const blocks = useSelector((state: RootState) => state.capture.blocks);
-  const { fields, manualFields, reset, init, assign, remove, addManual, removeManual } = useLabel();
+  const {
+    fields, manualFields, reset, init, assign, remove, addManual, editManual, removeManual,
+  } = useLabel();
 
   // Open Label empty by default, but prefill from OCR when explicitly coming from scan flow.
-  useFocusEffect(
-    useCallback(() => {
-      reset();
-      const shouldPrefill = (route.params as RootStackParamList['Label'])?.prefillFromOcr;
-      if (shouldPrefill && blocks.length > 0) {
-        init(blocks.map((b) => b.text));
-      }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [blocks, route.params]),
-  );
+  // Runs on mount (not on every focus) so returning from Info keeps the user's edits.
+  useEffect(() => {
+    reset();
+    if (shouldPrefill && blocks.length > 0) {
+      init(blocks.map((b) => b.text));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [blocks, shouldPrefill]);
 
   // Assign-type modal state
   const [assignTarget, setAssignTarget] = useState<{ index: number; isManual: boolean } | null>(null);
@@ -168,21 +173,22 @@ const LabelScreen: React.FC = () => {
     setAssignTarget({ index, isManual });
   const closeAssign = () => setAssignTarget(null);
 
-  const handleSelect = useCallback(
-    (ft: FieldType) => {
-      if (!assignTarget) return;
-      assign(assignTarget.index, ft);
-      closeAssign();
-    },
-    [assignTarget, assign],
-  );
-
   // Derive the field being assigned (for the modal display)
   const targetField = assignTarget
     ? assignTarget.isManual
       ? manualFields[assignTarget.index]
       : fields[assignTarget.index]
     : null;
+
+  const handleSelect = (ft: FieldType) => {
+    if (!assignTarget || !targetField) return;
+    if (assignTarget.isManual) {
+      editManual(assignTarget.index, targetField.text, ft);
+    } else {
+      assign(assignTarget.index, ft);
+    }
+    closeAssign();
+  };
 
   // Validate before proceeding: at least one non-unknown field
   const handleNext = () => {
@@ -196,36 +202,19 @@ const LabelScreen: React.FC = () => {
   };
 
   // ── Render helpers ─────────────────────────────────────────────────────────
-  const renderField = ({ item, index }: { item: LabelledField; index: number }) => (
-    <View style={styles.row}>
+  const renderRow = (item: LabelledField, index: number, isManual: boolean) => (
+    <View key={isManual ? `manual-${index}` : undefined} style={styles.row}>
       <TextChip
         label={item.text}
         fieldType={item.fieldType}
-        onPress={() => openAssign(index, false)}
+        onPress={() => openAssign(index, isManual)}
       />
       <View style={styles.rowMeta}>
-        <Text style={styles.typeLabel}>
-          {FIELD_TYPES.find((f) => f.value === item.fieldType)?.label ?? '❓'}
-        </Text>
-        <TouchableOpacity onPress={() => remove(index)} style={styles.deleteBtn}>
-          <Text style={styles.deleteText}>✕</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
-  const renderManual = ({ item, index }: { item: LabelledField; index: number }) => (
-    <View style={styles.row}>
-      <TextChip
-        label={item.text}
-        fieldType={item.fieldType}
-        onPress={() => openAssign(index, true)}
-      />
-      <View style={styles.rowMeta}>
-        <Text style={styles.typeLabel}>
-          {FIELD_TYPES.find((f) => f.value === item.fieldType)?.label ?? '❓'}
-        </Text>
-        <TouchableOpacity onPress={() => removeManual(index)} style={styles.deleteBtn}>
+        <Text style={styles.typeLabel}>{FIELD_TYPE_LABEL[item.fieldType] ?? '❓'}</Text>
+        <TouchableOpacity
+          onPress={() => (isManual ? removeManual(index) : remove(index))}
+          style={styles.deleteBtn}
+        >
           <Text style={styles.deleteText}>✕</Text>
         </TouchableOpacity>
       </View>
@@ -236,7 +225,7 @@ const LabelScreen: React.FC = () => {
     <View style={styles.container}>
       {/* Legend */}
       <View style={styles.legend}>
-        {FIELD_TYPES.filter((f) => f.value !== 'unknown').map(({ value, label }) => (
+        {MANUAL_FIELD_TYPES.map(({ value, label }) => (
           <View key={value} style={styles.legendItem}>
             <View style={[styles.dot, { backgroundColor: FIELD_COLORS[value] }]} />
             <Text style={styles.legendText}>{label}</Text>
@@ -253,7 +242,7 @@ const LabelScreen: React.FC = () => {
         <FlatList
           data={fields}
           keyExtractor={(_, i) => `ocr-${i}`}
-          renderItem={renderField}
+          renderItem={({ item, index }) => renderRow(item, index, false)}
           contentContainerStyle={styles.list}
           ListHeaderComponent={
             fields.length > 0 ? (
@@ -264,9 +253,7 @@ const LabelScreen: React.FC = () => {
             manualFields.length > 0 ? (
               <>
                 <Text style={styles.sectionHeader}>Manually added</Text>
-                {manualFields.map((item, index) =>
-                  renderManual({ item, index }),
-                )}
+                {manualFields.map((item, index) => renderRow(item, index, true))}
               </>
             ) : null
           }

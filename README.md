@@ -40,14 +40,14 @@ digger-helper/
 │   │   ├── api/      # Route handlers (/ocr, /discogs, /media)
 │   │   ├── services/ # OCR, Discogs, YouTube, SoundCloud, Bandcamp
 │   │   └── models/   # Pydantic response models
-│   └── tests/        # pytest unit tests (82 tests)
+│   └── tests/        # pytest unit tests (91 tests)
 │
 ├── mobile/           # Expo / React Native app (TypeScript)
 │   ├── src/
 │   │   ├── screens/  # Login, Capture, Label, Info, PlayerModal
 │   │   ├── store/    # Redux slices (capture, label, record)
 │   │   └── hooks/    # fetchAll — chains Discogs → media lookup
-│   └── __tests__/    # Jest slice tests (33 tests)
+│   └── __tests__/    # Jest slice + API client tests (37 tests)
 │
 └── docker-compose.yml
 ```
@@ -108,10 +108,13 @@ Scan the QR code with the **Expo Go** app on your phone (iOS or Android).
 | Variable | Required | Description |
 |---|---|---|
 | `DISCOGS_TOKEN` | Yes | Personal access token from [discogs.com/settings/developers](https://www.discogs.com/settings/developers) |
+| `APP_PASSCODE` | Yes | 10-character alphanumeric passcode entered on the app's lock screen |
+| `SECRET_KEY` | Yes | JWT signing key — generate with `openssl rand -hex 32` |
 | `DISCOGS_CONSUMER_KEY` | No | OAuth key (fallback if no token) |
 | `DISCOGS_CONSUMER_SECRET` | No | OAuth secret (fallback if no token) |
 | `YOUTUBE_API_KEY` | No | [YouTube Data API v3](https://console.cloud.google.com/) key — the app falls back to web scraping without it |
 | `ALLOWED_ORIGINS` | No | CORS origins (default: `http://localhost:8081,exp://localhost:8081`) |
+| `TESSERACT_CMD` | No | Path to the `tesseract` binary if it is not on `PATH` |
 
 ### Mobile — `mobile/.env`
 
@@ -123,7 +126,7 @@ Scan the QR code with the **Expo Go** app on your phone (iOS or Android).
 
 ## Running the tests
 
-**Backend** (82 tests)
+**Backend** (91 tests)
 
 ```bash
 cd backend
@@ -132,7 +135,7 @@ cd backend
 pytest -v tests/                        # macOS / Linux
 ```
 
-**Mobile** (33 tests)
+**Mobile** (37 tests)
 
 ```bash
 cd mobile
@@ -146,9 +149,9 @@ npm test
 | Layer | Technology |
 |---|---|
 | Mobile | [Expo](https://expo.dev) ~54 · React Native · TypeScript · Redux Toolkit |
-| Backend | [FastAPI](https://fastapi.tiangolo.com) · Python 3.13 · Uvicorn |
+| Backend | [FastAPI](https://fastapi.tiangolo.com) · Python 3.11+ · Uvicorn |
 | OCR | [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) |
-| Bandcamp scraping | Selenium + Chrome |
+| Bandcamp scraping | Selenium + Chrome/Chromium (bundled in the Docker image) |
 | Containerisation | Docker + Docker Compose |
 | Backend tests | pytest + pytest-asyncio · httpx |
 | Mobile tests | Jest · jest-expo |

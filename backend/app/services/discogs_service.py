@@ -13,8 +13,9 @@ Authentication priority:
 Get a personal token at: https://www.discogs.com/settings/developers
 """
 
-from typing import List, Optional
 import logging
+from concurrent.futures import ThreadPoolExecutor
+from typing import List, Optional
 
 import httpx
 
@@ -224,10 +225,12 @@ def search_releases(
             raw = _search_raw({"q": q}, limit)
             logger.info("Discogs q-search returned %d results", len(raw))
 
-    output: List[DiscogsResult] = []
-    for item in raw:
-        result = _parse_result(item)
-        if result:
-            output.append(result)
+    if not raw:
+        return []
 
-    return output
+    # Each result needs 2 extra requests (release detail + marketplace stats);
+    # fetch results concurrently instead of one after another. map() keeps order.
+    with ThreadPoolExecutor(max_workers=min(len(raw), 8)) as pool:
+        parsed = list(pool.map(_parse_result, raw))
+
+    return [result for result in parsed if result]

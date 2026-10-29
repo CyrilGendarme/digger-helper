@@ -4,10 +4,7 @@ No real HTTP calls are made.
 """
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from app.services.youtube_service import _iso_duration, search_youtube
-
 
 # ── _iso_duration ─────────────────────────────────────────────────────────────
 

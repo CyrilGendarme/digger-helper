@@ -1,10 +1,11 @@
+import os
+import shutil
 import socket
 import subprocess
-import os
 import sys
-import shutil
 import time
-from typing import Optional
+from typing import Literal, Optional, overload
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
@@ -106,6 +107,56 @@ def launch_chrome_with_debugging(
     return proc
 
 
+def _headless_options(
+    headless_flag: str, width: int, height: int, profile_dir: Optional[str]
+) -> Options:
+    options = Options()
+    try:
+        # Point Selenium at the installed browser (e.g. Debian's /usr/bin/chromium),
+        # otherwise Selenium Manager may try to download Chrome for Testing.
+        options.binary_location = find_chrome_executable()
+    except FileNotFoundError:
+        pass
+    options.add_argument(headless_flag)
+    options.add_argument("--disable-gpu")
+    options.add_argument(f"--window-size={width},{height}")
+    if profile_dir:
+        options.add_argument(f"--user-data-dir={profile_dir}")
+    options.add_argument("--no-sandbox")
+    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--disable-dev-tools")
+    options.add_argument("--remote-allow-origins=*")
+    return options
+
+
+@overload
+def get_or_attach_driver(
+    width: int,
+    height: int,
+    DEBUG_PORT: int,
+    CHROME_PROFILE_DIR: str,
+    CHROME_DEV_CONSOLE: bool,
+    HEADLESS_MODE: bool = ...,
+    HEADLESS_USE_PROFILE: bool = ...,
+    *,
+    shall_include_process: Literal[True],
+) -> tuple[webdriver.Chrome, subprocess.Popen | None]: ...
+
+
+@overload
+def get_or_attach_driver(
+    width: int,
+    height: int,
+    DEBUG_PORT: int,
+    CHROME_PROFILE_DIR: str,
+    CHROME_DEV_CONSOLE: bool,
+    HEADLESS_MODE: bool = ...,
+    HEADLESS_USE_PROFILE: bool = ...,
+    shall_include_process: Literal[False] = ...,
+) -> webdriver.Chrome: ...
+
+
 def get_or_attach_driver(
     width: int,
     height: int,
@@ -125,34 +176,16 @@ def get_or_attach_driver(
     # HEADLESS MODE (no debug attach)
     # -----------------------------
     if HEADLESS_MODE:
-        options = Options()
-        options.add_argument("--headless=new")
-        options.add_argument("--disable-gpu")
-        options.add_argument(f"--window-size={width},{height}")
-        if HEADLESS_USE_PROFILE:
-            options.add_argument(f"--user-data-dir={CHROME_PROFILE_DIR}")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-extensions")
-        options.add_argument("--disable-dev-tools")
-        options.add_argument("--remote-allow-origins=*")
-
+        profile_dir = CHROME_PROFILE_DIR if HEADLESS_USE_PROFILE else None
         try:
-            driver = webdriver.Chrome(options=options)
+            driver = webdriver.Chrome(
+                options=_headless_options("--headless=new", width, height, profile_dir)
+            )
         except Exception:
             # Some Linux builds fail with --headless=new; retry with legacy headless.
-            legacy_options = Options()
-            legacy_options.add_argument("--headless")
-            legacy_options.add_argument("--disable-gpu")
-            legacy_options.add_argument(f"--window-size={width},{height}")
-            if HEADLESS_USE_PROFILE:
-                legacy_options.add_argument(f"--user-data-dir={CHROME_PROFILE_DIR}")
-            legacy_options.add_argument("--no-sandbox")
-            legacy_options.add_argument("--disable-dev-shm-usage")
-            legacy_options.add_argument("--disable-extensions")
-            legacy_options.add_argument("--disable-dev-tools")
-            legacy_options.add_argument("--remote-allow-origins=*")
-            driver = webdriver.Chrome(options=legacy_options)
+            driver = webdriver.Chrome(
+                options=_headless_options("--headless", width, height, profile_dir)
+            )
 
         if shall_include_process:
             return driver, None

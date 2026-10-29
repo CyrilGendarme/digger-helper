@@ -4,10 +4,7 @@ Selenium driver is mocked — no browser is launched.
 """
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from app.services.bandcamp_service import clean_record_list_result, search_bandcamp
-
 
 # ── clean_record_list_result ──────────────────────────────────────────────────
 
@@ -118,13 +115,11 @@ class TestSearchBandcamp:
 
         assert links[0].price is None
 
-    def test_query_split_on_dash_sets_artist_and_name(self):
-        """'Artist - Album' must be split: artist_q='Artist', name_q='Album'."""
+    def test_name_artist_and_ref_forwarded_to_scraper(self):
         captured = {}
 
         def fake_info(driver, name="", artist="", record_ref=""):
-            captured["name"] = name
-            captured["artist"] = artist
+            captured.update(name=name, artist=artist, record_ref=record_ref)
             return []
 
         with patch("app.services.bandcamp_service.get_or_attach_driver",
@@ -133,29 +128,20 @@ class TestSearchBandcamp:
                    side_effect=fake_info), \
              patch("app.services.bandcamp_service.add_bandcamp_record_price",
                    side_effect=lambda d, items: items):
-            search_bandcamp("Quantic - Mango")
+            search_bandcamp("Mango", "Quantic", "TRU123")
 
-        assert captured["artist"] == "Quantic"
-        assert captured["name"] == "Mango"
+        assert captured == {"name": "Mango", "artist": "Quantic", "record_ref": "TRU123"}
 
-    def test_query_without_dash_goes_to_name_field(self):
-        captured = {}
-
-        def fake_info(driver, name="", artist="", record_ref=""):
-            captured["name"] = name
-            captured["artist"] = artist
-            return []
-
+    def test_retries_without_profile_when_first_start_fails(self):
+        mock_driver = MagicMock()
         with patch("app.services.bandcamp_service.get_or_attach_driver",
-                   return_value=(MagicMock(), None)), \
-             patch("app.services.bandcamp_service.get_bandcamp_info",
-                   side_effect=fake_info), \
-             patch("app.services.bandcamp_service.add_bandcamp_record_price",
-                   side_effect=lambda d, items: items):
-            search_bandcamp("NORD008")
+                   side_effect=[Exception("profile locked"), (mock_driver, None)]) as start, \
+             patch("app.services.bandcamp_service.get_bandcamp_info", return_value=[]):
+            search_bandcamp("Mango", "Quantic")
 
-        assert captured["artist"] == ""
-        assert captured["name"] == "NORD008"
+        assert start.call_count == 2
+        assert start.call_args_list[1].kwargs["HEADLESS_USE_PROFILE"] is False
+        mock_driver.quit.assert_called_once()
 
     def test_by_prefix_stripped_from_artist(self):
         """Bandcamp subhead starts with 'by' — it must be stripped before building links."""

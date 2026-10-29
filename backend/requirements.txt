@@ -15,17 +15,14 @@ pydantic-settings
 Pillow
 pytesseract
 
-# Discogs
-python3-discogs-client
-
-# YouTube search
+# YouTube search (scraping fallback when no API key is set)
 youtube-search-python
-google-api-python-client
 
 # SoundCloud
 soundcloud-v2
 
-# HTTP client
+# HTTP client (Discogs, YouTube Data API)
 httpx
 
+# Bandcamp scraping (needs Chrome/Chromium on the host)
 selenium

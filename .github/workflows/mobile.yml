@@ -18,7 +18,7 @@ defaults:
 
 jobs:
   type-check-and-lint:
-    name: TypeScript & ESLint
+    name: TypeScript & Tests
     runs-on: ubuntu-latest
 
     steps:
@@ -37,8 +37,8 @@ jobs:
       - name: TypeScript type-check
         run: npx tsc --noEmit
 
-      - name: Lint with ESLint
-        run: npx eslint "src/**/*.{ts,tsx}" --max-warnings=0
+      - name: Run tests
+        run: npm test
 
   eas-build-preview:
     name: EAS Build (preview) — iOS & Android

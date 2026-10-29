@@ -7,13 +7,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from app.services.discogs_service import (
-    _safe,
     _auth_params,
     _fetch_price_stats,
     _parse_result,
+    _safe,
     search_releases,
 )
-
 
 # ── _safe ─────────────────────────────────────────────────────────────────────
 

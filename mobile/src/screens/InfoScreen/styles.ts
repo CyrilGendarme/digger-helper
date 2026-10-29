@@ -71,6 +71,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 8,
   },
+  retryBtnDisabled: {
+    opacity: 0.4,
+  },
   retryText: {
     color: '#888',
     fontSize: 13,

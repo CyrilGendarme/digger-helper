@@ -4,8 +4,8 @@ import time
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.config import settings
 from app.api import router
+from app.config import DEFAULT_SECRET_KEY, settings
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -19,7 +19,6 @@ for _noisy in (
     "httpx",
     "httpcore",
     "urllib3",
-    "discogs_client",
     "pytesseract",
     "selenium",
     "selenium.webdriver",
@@ -28,6 +27,9 @@ for _noisy in (
     "webdriver_manager",
 ):
     logging.getLogger(_noisy).setLevel(logging.WARNING)
+
+if settings.secret_key == DEFAULT_SECRET_KEY:
+    logger.warning("SECRET_KEY is the built-in default — set it in .env before exposing the API")
 
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(title=settings.app_title, debug=settings.debug)

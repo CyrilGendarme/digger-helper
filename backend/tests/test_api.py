@@ -1,17 +1,17 @@
 """
-Backend test suite.
-
-OCR service is mocked so CI does not need to download
-EasyOCR model files (~500 MB).
+API route tests. External services are mocked; auth is bypassed except in
+the dedicated auth tests.
 """
 import io
-from unittest.mock import patch, MagicMock
+import time
+from unittest.mock import patch
 
 import pytest
-from httpx import AsyncClient, ASGITransport
+from httpx import ASGITransport, AsyncClient
 
+from app.api.deps import require_auth
+from app.config import settings
 from main import app
-
 
 # ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -21,11 +21,66 @@ def anyio_backend():
 
 
 @pytest.fixture
-async def client():
+async def anon_client():
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as ac:
         yield ac
+
+
+@pytest.fixture
+async def client(anon_client: AsyncClient):
+    """Client whose requests pass the auth dependency."""
+    app.dependency_overrides[require_auth] = lambda: None
+    try:
+        yield anon_client
+    finally:
+        app.dependency_overrides.pop(require_auth, None)
+
+
+# ── Auth ──────────────────────────────────────────────────────────────────────
+
+@pytest.mark.asyncio
+async def test_protected_route_rejects_missing_token(anon_client: AsyncClient):
+    response = await anon_client.get("/api/v1/discogs/search", params={"artist": "x"})
+    assert response.status_code in (401, 403)
+
+
+@pytest.mark.asyncio
+async def test_login_then_access_protected_route(anon_client: AsyncClient):
+    response = await anon_client.post(
+        "/api/v1/auth/login", json={"passcode": settings.app_passcode}
+    )
+    assert response.status_code == 200
+    token = response.json()["access_token"]
+
+    response = await anon_client.get(
+        "/api/v1/discogs/search", headers={"Authorization": f"Bearer {token}"}
+    )
+    # Auth passed; the 422 comes from the missing query params.
+    assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_login_wrong_passcode(anon_client: AsyncClient):
+    response = await anon_client.post("/api/v1/auth/login", json={"passcode": "ZZZZZZZZZZ"})
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_login_malformed_passcode(anon_client: AsyncClient):
+    response = await anon_client.post("/api/v1/auth/login", json={"passcode": "short"})
+    assert response.status_code == 400
+
+
+@pytest.mark.asyncio
+async def test_invalid_token_rejected(anon_client: AsyncClient):
+    response = await anon_client.get(
+        "/api/v1/discogs/search",
+        params={"artist": "x"},
+        headers={"Authorization": "Bearer not-a-jwt"},
+    )
+    assert response.status_code == 401
 
 
 # ── Health ────────────────────────────────────────────────────────────────────
@@ -222,6 +277,42 @@ async def test_media_search_all_services_empty_still_200(client: AsyncClient):
 
     assert response.status_code == 200
     assert response.json()["links"] == []
+
+
+@pytest.mark.asyncio
+async def test_media_search_slow_service_does_not_block_response(client: AsyncClient):
+    """A service exceeding the budget is dropped; the others still return promptly."""
+    from app.models.record import MediaLink, Platform
+
+    sc_link = MediaLink(platform=Platform.soundcloud, title="t", url="https://soundcloud.com/a/b")
+
+    def slow(*_args, **_kwargs):
+        time.sleep(1.0)
+        return []
+
+    with patch("app.api.routes.search.SERVICE_TIMEOUT_SECONDS", 0.2), \
+         patch("app.api.routes.search.search_youtube", side_effect=slow), \
+         patch("app.api.routes.search.search_soundcloud", return_value=[sc_link]), \
+         patch("app.api.routes.search.search_bandcamp", side_effect=slow):
+        started = time.perf_counter()
+        response = await client.get(
+            "/api/v1/search/media", params={"artist": "a", "record": "b"}
+        )
+        elapsed = time.perf_counter() - started
+
+    assert response.status_code == 200
+    assert [link["platform"] for link in response.json()["links"]] == ["soundcloud"]
+    assert elapsed < 0.9
+
+
+@pytest.mark.asyncio
+async def test_media_search_without_ref_passes_empty_ref_to_bandcamp(client: AsyncClient):
+    with patch("app.api.routes.search.search_youtube", return_value=[]), \
+         patch("app.api.routes.search.search_soundcloud", return_value=[]), \
+         patch("app.api.routes.search.search_bandcamp", return_value=[]) as bc:
+        await client.get("/api/v1/search/media", params={"artist": "a", "record": "b"})
+
+    assert bc.call_args.args[2] == ""
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────

@@ -5,9 +5,9 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Linking,
-  SafeAreaView,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView, WebViewNavigation } from 'react-native-webview';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { RootStackParamList } from '../../navigation/types';

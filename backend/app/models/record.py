@@ -1,26 +1,7 @@
-from pydantic import BaseModel, HttpUrl
-from typing import Optional, List
 from enum import Enum
+from typing import List, Optional
 
-
-class FieldType(str, Enum):
-    track_name = "track_name"
-    artist_name = "artist_name"
-    album_name = "album_name"
-    record_ref = "record_ref"
-    unknown = "unknown"
-
-
-class LabelledField(BaseModel):
-    text: str
-    field_type: FieldType
-
-
-class RecordInfo(BaseModel):
-    track_name: Optional[str] = None
-    artist_name: Optional[str] = None
-    album_name: Optional[str] = None
-    record_ref: Optional[str] = None
+from pydantic import BaseModel
 
 
 # ── Discogs ────────────────────────────────────────────────────────────────

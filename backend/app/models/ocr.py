@@ -1,11 +1,6 @@
-from pydantic import BaseModel
 from typing import List
 
-
-class OCRRequest(BaseModel):
-    """Not used for multipart uploads — kept for manual text submission."""
-
-    raw_text: str
+from pydantic import BaseModel
 
 
 class TextBlock(BaseModel):

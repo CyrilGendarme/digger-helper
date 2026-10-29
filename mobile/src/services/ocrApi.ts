@@ -1,4 +1,4 @@
-import { API_BASE_URL, getAuthHeaders } from './api';
+import { apiRequest } from './api';
 import { OCRResponse } from '../types/ocr';
 
 /**
@@ -15,17 +15,9 @@ export async function extractTextFromImage(imageUri: string): Promise<OCRRespons
     type: 'image/jpeg',
   } as unknown as Blob);
 
-  const response = await fetch(`${API_BASE_URL}/ocr/extract`, {
+  // Do NOT set Content-Type manually — fetch sets multipart boundary automatically
+  return apiRequest<OCRResponse>('/ocr/extract', 'OCR request', {
     method: 'POST',
-    headers: { ...getAuthHeaders() },
     body: formData,
-    // Do NOT set Content-Type manually — fetch sets multipart boundary automatically
   });
-
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`OCR request failed (${response.status}): ${detail}`);
-  }
-
-  return response.json() as Promise<OCRResponse>;
 }

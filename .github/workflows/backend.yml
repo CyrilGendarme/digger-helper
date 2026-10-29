@@ -50,8 +50,6 @@ jobs:
 
       - name: Run tests
         env:
-          # Disable heavy model downloads in CI — mock the OCR service
-          EASYOCR_MODULE_PATH: /tmp/easyocr
           DISCOGS_CONSUMER_KEY: ""
           DISCOGS_CONSUMER_SECRET: ""
           YOUTUBE_API_KEY: ""

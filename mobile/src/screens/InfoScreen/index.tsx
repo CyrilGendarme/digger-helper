@@ -67,6 +67,8 @@ const InfoScreen: React.FC = () => {
     navigation.navigate('Player', { url: link.url, title: link.title, platform: link.platform });
   };
 
+  const isBusy = discogsLoading || mediaLoading;
+
   // ── Section list data ────────────────────────────────────────────────────
   const bandcampLinks = mediaLinks.filter((l) => l.platform === 'bandcamp');
   const streamLinks   = mediaLinks.filter((l) => l.platform !== 'bandcamp');
@@ -109,7 +111,10 @@ const InfoScreen: React.FC = () => {
       style={styles.container}
       contentContainerStyle={styles.content}
       sections={sections.map((s) => ({ ...s, data: s.data as object[] }))}
-      keyExtractor={(item, index) => `${(item as { id?: number }).id ?? index}`}
+      keyExtractor={(item, index) => {
+        const { id, url } = item as { id?: number; url?: string };
+        return `${id ?? url ?? index}`;
+      }}
       stickySectionHeadersEnabled={false}
       renderSectionHeader={({ section }) => {
         const s = section as typeof sections[number];
@@ -154,7 +159,8 @@ const InfoScreen: React.FC = () => {
       }
       ListFooterComponent={
         <TouchableOpacity
-          style={styles.retryBtn}
+          style={[styles.retryBtn, isBusy && styles.retryBtnDisabled]}
+          disabled={isBusy}
           onPress={() => {
             fetchAll(recordInfo);
           }}

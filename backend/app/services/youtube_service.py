@@ -14,11 +14,10 @@ from youtubesearchpython import VideosSearch
 from app.config import settings
 from app.models.record import MediaLink, Platform
 
+logger = logging.getLogger(__name__)
 
 def _iso_duration(iso: str) -> str:
     """Convert PT4M33S → '4:33'."""
-    import re
-
     m = re.match(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?", iso)
     if not m:
         return iso
@@ -33,7 +32,7 @@ def _iso_duration(iso: str) -> str:
 
 def _search_via_api(query: str, limit: int) -> List[MediaLink]:
     """Use official YouTube Data API v3."""
-    params = {
+    params: dict[str, str | int] = {
         "part": "snippet",
         "q": query,
         "type": "video",
@@ -96,9 +95,6 @@ def _search_via_scrape(query: str, limit: int) -> List[MediaLink]:
             )
         )
     return links
-
-
-logger = logging.getLogger(__name__)
 
 
 def _normalize_query(query: str) -> str:
