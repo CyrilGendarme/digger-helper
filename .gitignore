@@ -62,3 +62,6 @@ desktop.ini
 
 # ─── Selenium / WebDriver ───────────────────────────────────────────────────
 **/selenium_chrome_profile/
+# ─── Linux deployment (deploy/linux) ──────────────────────
+deploy/linux/config.env
+deploy/linux/state/

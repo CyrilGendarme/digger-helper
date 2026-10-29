@@ -49,6 +49,7 @@ digger-helper/
 │   │   └── hooks/    # fetchAll — chains Discogs → media lookup
 │   └── __tests__/    # Jest slice + API client tests (42 tests)
 │
+├── deploy/linux/     # install.sh + systemd services for 24/7 hosting
 └── docker-compose.yml
 ```
 
@@ -98,6 +99,46 @@ npx expo start
 ```
 
 Scan the QR code with the **Expo Go** app on your phone (iOS or Android).
+
+---
+
+## Deploy on a Linux server (24/7)
+
+`deploy/linux/install.sh` installs the backend and the Expo dev server as two systemd
+services that start at boot and restart on failure, so Expo Go can open the app at any time.
+
+```bash
+git clone https://github.com/CyrilGendarme/digger-helper.git && cd digger-helper
+deploy/linux/install.sh                      # phone on the same network as the server
+deploy/linux/install.sh --api-mode cloudflare   # phone anywhere (free Cloudflare quick tunnel)
+deploy/linux/install.sh --api-url https://api.example.com   # your own domain / reverse proxy
+```
+
+Run it as your normal user (it uses `sudo` where needed). It needs Python 3.11+, Node.js 20+
+and systemd; on Debian/Ubuntu it installs Tesseract itself. It also:
+
+- creates `backend/.venv` and installs the npm dependencies,
+- creates `backend/.env` if missing and replaces the example `SECRET_KEY` / `APP_PASSCODE`
+  with random values (the new passcode is printed at the end),
+- prints the **Expo Go link and a QR code** (install `qrencode` for the QR code).
+
+The Expo Go link goes through Expo's tunnel (`exp.direct`) and stays the same across
+restarts. A watchdog restarts the Expo service if the link stops responding.
+
+| Command | |
+|---|---|
+| `digger-helper url` | show the Expo Go link and the backend URL the app uses |
+| `digger-helper status` | service status |
+| `digger-helper logs [backend\|expo]` | follow the logs |
+| `digger-helper restart` | restart both services (needed after editing a config file) |
+| `digger-helper update` | `git pull`, reinstall dependencies, restart |
+| `digger-helper uninstall` | remove the services (code and config are kept) |
+
+Settings live in `deploy/linux/config.env` (API mode, ports, `EXPO_HOST=tunnel|lan`) and
+`backend/.env` (passcode, Discogs token, …).
+
+> With `--api-mode cloudflare` the backend URL changes whenever the tunnel restarts. The Expo
+> service picks up the new URL automatically; close and reopen the app in Expo Go to reload it.
 
 ---
 

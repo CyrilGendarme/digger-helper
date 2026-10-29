@@ -1,0 +1,18 @@
+[Unit]
+Description=Digger Helper Expo dev server (Expo Go access)
+After=network-online.target digger-backend.service
+Wants=network-online.target digger-backend.service
+
+[Service]
+Type=simple
+User=@USER@
+WorkingDirectory=@ROOT@/mobile
+ExecStart=@ROOT@/deploy/linux/run-expo.sh
+# node/npx may live outside the default system PATH (nvm, ~/.local/node, …)
+Environment=PATH=@NODE_BIN@:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Environment=NODE_ENV=development
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,16 @@
+[Unit]
+Description=Digger Helper backend (FastAPI)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=@USER@
+WorkingDirectory=@ROOT@/backend
+ExecStart=@ROOT@/deploy/linux/run-backend.sh
+Environment=PYTHONUNBUFFERED=1
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

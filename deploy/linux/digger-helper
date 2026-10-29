@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# Control the Digger Helper services. install.sh links this to /usr/local/bin/digger-helper.
+set -euo pipefail
+
+DEPLOY_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+ROOT_DIR="$(cd "$DEPLOY_DIR/../.." && pwd)"
+SERVICES=(digger-backend digger-expo)
+
+usage() {
+  cat <<EOF
+Usage: digger-helper <command>
+
+  status            show whether the services are running
+  url               print the Expo Go link (with a QR code if qrencode is installed)
+  logs [backend|expo]  follow the logs (both services by default)
+  start | stop | restart
+  update            git pull, reinstall dependencies, restart
+  uninstall         stop and remove the services (keeps the code and config)
+EOF
+}
+
+journal() {
+  # Reading system-unit logs needs the adm/systemd-journal group, else sudo.
+  if [[ $EUID -eq 0 ]] || id -nG | grep -qwE 'adm|systemd-journal'; then
+    journalctl "$@"
+  else
+    sudo journalctl "$@"
+  fi
+}
+
+cmd_url() {
+  local url=""
+  for _ in $(seq 1 90); do
+    url="$(cat "$DEPLOY_DIR/state/expo-url" 2>/dev/null || true)"
+    [[ -n "$url" ]] && break
+    if ! systemctl is-active -q digger-expo; then
+      echo "digger-expo is not running — see: digger-helper logs expo" >&2
+      return 1
+    fi
+    sleep 2
+  done
+  if [[ -z "$url" ]]; then
+    echo "Expo has not printed its URL yet — see: digger-helper logs expo" >&2
+    return 1
+  fi
+
+  echo "Expo Go link : $url"
+  if [[ -f "$DEPLOY_DIR/state/api-url" ]]; then
+    echo "Backend URL  : $(cat "$DEPLOY_DIR/state/api-url")"
+  fi
+  if command -v qrencode >/dev/null; then
+    qrencode -t ansiutf8 "$url"
+  else
+    echo "(install qrencode to show a QR code, or type the link into Expo Go)"
+  fi
+}
+
+cmd_update() {
+  git -C "$ROOT_DIR" pull --ff-only
+  "$ROOT_DIR/backend/.venv/bin/pip" install -q -r "$ROOT_DIR/backend/requirements.txt"
+  (cd "$ROOT_DIR/mobile" && npm ci --no-audit --no-fund)
+  sudo systemctl restart "${SERVICES[@]}"
+  echo "Updated and restarted."
+}
+
+cmd_uninstall() {
+  sudo systemctl disable --now "${SERVICES[@]}" 2>/dev/null || true
+  for svc in "${SERVICES[@]}"; do
+    sudo rm -f "/etc/systemd/system/$svc.service"
+  done
+  sudo systemctl daemon-reload
+  if [[ "$(readlink -f /usr/local/bin/digger-helper 2>/dev/null)" == "$DEPLOY_DIR/digger-helper" ]]; then
+    sudo rm -f /usr/local/bin/digger-helper
+  fi
+  echo "Services removed. Code, backend/.env and deploy/linux/config.env were kept."
+}
+
+case "${1:-}" in
+  status) systemctl status --no-pager "${SERVICES[@]}" ;;
+  url) cmd_url ;;
+  logs)
+    case "${2:-}" in
+      backend) journal -u digger-backend -f ;;
+      expo) journal -u digger-expo -f ;;
+      "") journal -u digger-backend -u digger-expo -f ;;
+      *) usage; exit 1 ;;
+    esac
+    ;;
+  start | stop | restart) sudo systemctl "$1" "${SERVICES[@]}" ;;
+  update) cmd_update ;;
+  uninstall) cmd_uninstall ;;
+  -h | --help | help) usage ;;
+  *) usage; exit 1 ;;
+esac
