@@ -83,6 +83,19 @@ async def test_invalid_token_rejected(anon_client: AsyncClient):
     assert response.status_code == 401
 
 
+@pytest.mark.asyncio
+async def test_expired_token_rejected(anon_client: AsyncClient):
+    import jwt
+
+    token = jwt.encode({"sub": "user", "exp": int(time.time()) - 10}, settings.secret_key)
+    response = await anon_client.get(
+        "/api/v1/discogs/search",
+        params={"artist": "x"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 401
+
+
 # ── Health ────────────────────────────────────────────────────────────────────
 
 @pytest.mark.asyncio

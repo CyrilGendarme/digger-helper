@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';
@@ -10,12 +11,26 @@ import PlayerModal from '../screens/PlayerModal';
 import LoginScreen from '../screens/LoginScreen';
 import type { RootStackParamList, AuthStackParamList } from './types';
 import type { RootState } from '../store';
+import { restoreSession } from '../services/api';
 
 const AppStack = createNativeStackNavigator<RootStackParamList>();
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 
 const AppNavigator: React.FC = () => {
-  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const { isAuthenticated, restored } = useSelector((state: RootState) => state.auth);
+
+  useEffect(() => {
+    restoreSession();
+  }, []);
+
+  // Avoid flashing the passcode screen while the stored session is checked.
+  if (!restored) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#111', justifyContent: 'center' }}>
+        <ActivityIndicator color="#E63946" />
+      </View>
+    );
+  }
 
   return (
     <NavigationContainer>

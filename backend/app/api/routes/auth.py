@@ -3,8 +3,8 @@ import re
 import secrets
 from datetime import datetime, timedelta, timezone
 
+import jwt
 from fastapi import APIRouter, HTTPException, status
-from jose import jwt
 from pydantic import BaseModel
 
 from app.config import settings

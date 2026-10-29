@@ -27,7 +27,8 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      ["expo-camera", { "cameraPermission": "Used to scan record sleeves for OCR." }]
+      ["expo-camera", { "cameraPermission": "Used to scan record sleeves for OCR." }],
+      "expo-secure-store"
     ],
     "extra": {}
   }

@@ -7,16 +7,12 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { useDispatch } from 'react-redux';
-import { login } from '../../store/slices/authSlice';
-import { AppDispatch } from '../../store';
-import { buildApiUrl, setAuthToken } from '../../services/api';
+import { buildApiUrl, startSession } from '../../services/api';
 import styles from './styles';
 
 const PASSCODE_REGEX = /^[A-Za-z0-9]{10}$/;
 
 const LoginScreen: React.FC = () => {
-  const dispatch = useDispatch<AppDispatch>();
   const [input, setInput] = useState('');
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -42,15 +38,14 @@ const LoginScreen: React.FC = () => {
       }
 
       const data = await response.json();
-      setAuthToken(data.access_token);
-      dispatch(login(data.access_token));
+      await startSession(data.access_token);
     } catch {
       setError(true);
       setInput('');
     } finally {
       setLoading(false);
     }
-  }, [input, dispatch]);
+  }, [input]);
 
   return (
     <KeyboardAvoidingView

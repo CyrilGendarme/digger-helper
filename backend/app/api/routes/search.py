@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 # Overall budget for the whole request — all services run concurrently against it.
 SERVICE_TIMEOUT_SECONDS = 20
+# Bandcamp trims its optional price lookups to finish this far ahead of the deadline.
+BANDCAMP_BUDGET_MARGIN_SECONDS = 2
 
 # Shared across requests so a slow service never blocks the response: on timeout we
 # return without waiting for the straggler thread, which finishes in the background.
@@ -62,7 +64,14 @@ def media_search(
     futures = {
         "YouTube": _pool.submit(search_youtube, query, limit),
         "SoundCloud": _pool.submit(search_soundcloud, query, limit),
-        "Bandcamp": _pool.submit(search_bandcamp, record, artist, record_ref or "", limit),
+        "Bandcamp": _pool.submit(
+            search_bandcamp,
+            record,
+            artist,
+            record_ref or "",
+            limit,
+            budget_seconds=SERVICE_TIMEOUT_SECONDS - BANDCAMP_BUDGET_MARGIN_SECONDS,
+        ),
     }
     results = {name: _collect(name, fut, deadline, t0) for name, fut in futures.items()}
 

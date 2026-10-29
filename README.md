@@ -40,14 +40,14 @@ digger-helper/
 │   │   ├── api/      # Route handlers (/ocr, /discogs, /media)
 │   │   ├── services/ # OCR, Discogs, YouTube, SoundCloud, Bandcamp
 │   │   └── models/   # Pydantic response models
-│   └── tests/        # pytest unit tests (91 tests)
+│   └── tests/        # pytest unit tests (97 tests)
 │
 ├── mobile/           # Expo / React Native app (TypeScript)
 │   ├── src/
 │   │   ├── screens/  # Login, Capture, Label, Info, PlayerModal
 │   │   ├── store/    # Redux slices (capture, label, record)
 │   │   └── hooks/    # fetchAll — chains Discogs → media lookup
-│   └── __tests__/    # Jest slice + API client tests (37 tests)
+│   └── __tests__/    # Jest slice + API client tests (42 tests)
 │
 └── docker-compose.yml
 ```
@@ -126,7 +126,7 @@ Scan the QR code with the **Expo Go** app on your phone (iOS or Android).
 
 ## Running the tests
 
-**Backend** (91 tests)
+**Backend** (97 tests)
 
 ```bash
 cd backend
@@ -135,7 +135,7 @@ cd backend
 pytest -v tests/                        # macOS / Linux
 ```
 
-**Mobile** (37 tests)
+**Mobile** (42 tests)
 
 ```bash
 cd mobile

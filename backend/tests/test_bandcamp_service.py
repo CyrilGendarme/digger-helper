@@ -4,7 +4,11 @@ Selenium driver is mocked — no browser is launched.
 """
 from unittest.mock import MagicMock, patch
 
-from app.services.bandcamp_service import clean_record_list_result, search_bandcamp
+from app.services.bandcamp_service import (
+    add_bandcamp_record_price,
+    clean_record_list_result,
+    search_bandcamp,
+)
 
 # ── clean_record_list_result ──────────────────────────────────────────────────
 
@@ -77,7 +81,7 @@ class TestSearchBandcamp:
         """Return a context-manager stack that mocks driver + info helpers."""
         raw = raw if raw is not None else _raw_items()
         if price_fn is None:
-            price_fn = lambda d, items: items  # noqa: E731  (no-op, price already set)
+            price_fn = lambda d, items, **_: items  # noqa: E731  (no-op, price already set)
 
         return (
             patch("app.services.bandcamp_service.get_or_attach_driver",
@@ -127,7 +131,7 @@ class TestSearchBandcamp:
              patch("app.services.bandcamp_service.get_bandcamp_info",
                    side_effect=fake_info), \
              patch("app.services.bandcamp_service.add_bandcamp_record_price",
-                   side_effect=lambda d, items: items):
+                   side_effect=lambda d, items, **_: items):
             search_bandcamp("Mango", "Quantic", "TRU123")
 
         assert captured == {"name": "Mango", "artist": "Quantic", "record_ref": "TRU123"}
@@ -167,7 +171,7 @@ class TestSearchBandcamp:
                    return_value=(mock_driver, None)), \
              patch("app.services.bandcamp_service.get_bandcamp_info", return_value=[]), \
              patch("app.services.bandcamp_service.add_bandcamp_record_price",
-                   side_effect=lambda d, items: items):
+                   side_effect=lambda d, items, **_: items):
             search_bandcamp("test")
 
         mock_driver.quit.assert_called_once()
@@ -190,3 +194,69 @@ class TestSearchBandcamp:
             links = search_bandcamp("test")
 
         assert links == []
+
+
+# ── add_bandcamp_record_price ─────────────────────────────────────────────────
+
+class TestAddBandcampRecordPrice:
+    def _driver(self):
+        driver = MagicMock()
+        return driver
+
+    def test_prices_filled_without_deadline(self):
+        driver = self._driver()
+        with patch("app.services.bandcamp_service.WebDriverWait") as wait, \
+             patch("app.services.bandcamp_service.time.sleep"):
+            wait.return_value.until.return_value.find_element.return_value.text = " €8 "
+            items = add_bandcamp_record_price(driver, _raw_items(3))
+
+        assert [i["price"] for i in items] == ["€8", "€8", "€8"]
+        assert driver.get.call_count == 3
+
+    def test_no_sleep_before_first_lookup(self):
+        with patch("app.services.bandcamp_service.WebDriverWait"), \
+             patch("app.services.bandcamp_service.time.sleep") as sleep:
+            add_bandcamp_record_price(self._driver(), _raw_items(2))
+
+        assert sleep.call_count == 1
+
+    def test_expired_deadline_skips_all_lookups(self):
+        driver = self._driver()
+        items = [dict(i, price="") for i in _raw_items(3)]
+        with patch("app.services.bandcamp_service.time.monotonic", return_value=100.0):
+            result = add_bandcamp_record_price(driver, items, deadline=101.0)
+
+        driver.get.assert_not_called()
+        assert len(result) == 3
+        assert all(i["price"] == "" for i in result)
+
+    def test_deadline_stops_midway(self):
+        """Enough budget for the first page only; later items keep no price."""
+        driver = self._driver()
+        items = [dict(i, price="") for i in _raw_items(3)]
+        clock = iter([100.0, 105.0])  # second check: 5s left minus 2s delay < 4s min
+        with patch("app.services.bandcamp_service.time.monotonic", side_effect=lambda: next(clock)), \
+             patch("app.services.bandcamp_service.time.sleep"), \
+             patch("app.services.bandcamp_service.WebDriverWait") as wait:
+            wait.return_value.until.return_value.find_element.return_value.text = "€5"
+            result = add_bandcamp_record_price(driver, items, deadline=110.0)
+
+        assert driver.get.call_count == 1
+        assert [i["price"] for i in result] == ["€5", "", ""]
+
+    def test_search_passes_deadline_from_budget(self):
+        captured = {}
+
+        def fake_price(driver, items, deadline=None):
+            captured["deadline"] = deadline
+            return items
+
+        with patch("app.services.bandcamp_service.get_or_attach_driver",
+                   return_value=(MagicMock(), None)), \
+             patch("app.services.bandcamp_service.get_bandcamp_info", return_value=_raw_items(1)), \
+             patch("app.services.bandcamp_service.add_bandcamp_record_price",
+                   side_effect=fake_price), \
+             patch("app.services.bandcamp_service.time.monotonic", return_value=50.0):
+            search_bandcamp("Mango", "Quantic", budget_seconds=18)
+
+        assert captured["deadline"] == 68.0

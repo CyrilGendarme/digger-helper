@@ -16,6 +16,8 @@ logger = logging.getLogger(__name__)
 
 # Delay between consecutive album-page loads, to avoid hammering Bandcamp.
 PRICE_LOOKUP_DELAY_SECONDS = 2
+# Don't start another album-page load with less time than this left in the budget.
+PRICE_LOOKUP_MIN_SECONDS = 4
 PROFILE_DIR = os.path.join(os.path.dirname(__file__), "selenium_chrome_profile")
 
 
@@ -113,23 +115,38 @@ def clean_record_list_result(bandcamp_info, name="", artist=""):
         return bandcamp_info
 
 
-def add_bandcamp_record_price(driver, bandcamp_info: list[dict[str, str]]) -> list[dict[str, str]]:
+def add_bandcamp_record_price(
+    driver, bandcamp_info: list[dict[str, str]], deadline: float | None = None
+) -> list[dict[str, str]]:
+    """
+    Fill in each item's digital price by loading its album page.
+
+    Prices are optional extras: once `deadline` (a time.monotonic() value) gets
+    close, the remaining items are returned without a price rather than late.
+    """
     for i, item in enumerate(bandcamp_info):
+        wait_seconds = 15.0
+        if deadline is not None:
+            remaining = deadline - time.monotonic() - (PRICE_LOOKUP_DELAY_SECONDS if i > 0 else 0)
+            if remaining < PRICE_LOOKUP_MIN_SECONDS:
+                logger.info(
+                    "Bandcamp price lookup stopped by time budget | priced=%d of %d",
+                    i,
+                    len(bandcamp_info),
+                )
+                break
+            wait_seconds = min(wait_seconds, remaining)
+
         if i > 0:
             time.sleep(PRICE_LOOKUP_DELAY_SECONDS)
-        driver.get(item["href"])
 
         try:
-            #  Wait for page to be fully loaded (specifically the results list)
-            wait = WebDriverWait(driver, 15)
-            element = wait.until(
+            driver.set_page_load_timeout(wait_seconds)
+            driver.get(item["href"])
+            element = WebDriverWait(driver, wait_seconds).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, ".buyItem.digital"))
             )
-            price = element.find_element(
-                By.CSS_SELECTOR, "span.base-text-color"
-            ).text.strip()
-            item["price"] = price
-
+            item["price"] = element.find_element(By.CSS_SELECTOR, "span.base-text-color").text.strip()
         except Exception as e:
             logger.debug(
                 "Bandcamp price lookup failed | title=%r artist=%r url=%s error=%s",
@@ -138,7 +155,6 @@ def add_bandcamp_record_price(driver, bandcamp_info: list[dict[str, str]]) -> li
                 item.get("href", ""),
                 e,
             )
-            continue
 
     return bandcamp_info
 
@@ -165,13 +181,18 @@ def _start_driver():
             logger.warning("Bandcamp browser startup failed with profile; retrying without profile")
 
 
-def search_bandcamp(name="", artist="", record_ref="", limit: int = 5) -> list[MediaLink]:
+def search_bandcamp(
+    name="", artist="", record_ref="", limit: int = 5, budget_seconds: float | None = None
+) -> list[MediaLink]:
     """
     Entry point called by the FastAPI route.
 
     Spins up a headless Chrome, scrapes Bandcamp search results, filters them,
     looks up digital prices for the top `limit` albums and returns MediaLinks.
+    With `budget_seconds`, price lookups that would overrun it are skipped so the
+    links still come back in time (without a price).
     """
+    deadline = time.monotonic() + budget_seconds if budget_seconds is not None else None
     logger.info(
         "Bandcamp search | name=%r artist=%r record_ref=%r limit=%d", name, artist, record_ref, limit
     )
@@ -194,7 +215,7 @@ def search_bandcamp(name="", artist="", record_ref="", limit: int = 5) -> list[M
 
         # Price lookup loads one page per item — apply only to the slice we return.
         sliced = results[:limit]
-        add_bandcamp_record_price(driver, sliced)
+        add_bandcamp_record_price(driver, sliced, deadline=deadline)
 
         links: list[MediaLink] = []
         for item in sliced:
