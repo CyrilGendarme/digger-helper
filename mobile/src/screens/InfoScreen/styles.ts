@@ -1,82 +1,92 @@
 import { StyleSheet } from 'react-native';
+import { colors, radius, spacing, type } from '../../theme';
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111',
+    backgroundColor: colors.bg,
   },
   content: {
-    paddingHorizontal: 16,
-    paddingBottom: 40,
+    paddingHorizontal: spacing.lg,
   },
 
-  // ── Query summary bar ───────────────────────────────────
-  infoBar: {
+  // ── Query summary ───────────────────────────────────────
+  queryBar: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
-    marginBottom: 8,
+    gap: spacing.sm,
+    paddingTop: spacing.xs,
   },
-  infoChip: {
-    backgroundColor: '#2a2a2a',
-    color: '#ddd',
-    fontSize: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 20,
+  queryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    maxWidth: '100%',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+  },
+  queryText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: '600',
+    flexShrink: 1,
   },
 
   // ── Section headers ─────────────────────────────────────
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    marginTop: 20,
-    marginBottom: 8,
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    marginBottom: spacing.md,
   },
   sectionTitle: {
-    color: '#fff',
-    fontSize: 16,
+    ...type.title,
+    fontSize: 19,
+  },
+  countPill: {
+    backgroundColor: colors.surfaceRaised,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 1,
+  },
+  countText: {
+    color: colors.textMuted,
+    fontSize: 12,
     fontWeight: '700',
   },
 
-  // ── Error / empty ────────────────────────────────────────
-  errorBox: {
-    backgroundColor: '#3a0000',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
+  // ── Loading / empty / error ─────────────────────────────
+  statusCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm + 2,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  statusText: {
+    ...type.caption,
+    flex: 1,
+  },
+  errorCard: {
+    backgroundColor: colors.dangerSoft,
   },
   errorText: {
-    color: '#ff6b6b',
+    color: colors.danger,
     fontSize: 13,
-  },
-  emptyText: {
-    color: '#555',
-    fontSize: 13,
-    textAlign: 'center',
-    paddingVertical: 12,
+    flex: 1,
   },
 
-  // ── Refresh button ───────────────────────────────────────
-  retryBtn: {
-    marginTop: 24,
+  retry: {
     alignSelf: 'center',
-    borderWidth: 1,
-    borderColor: '#333',
-    borderRadius: 20,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-  },
-  retryBtnDisabled: {
-    opacity: 0.4,
-  },
-  retryText: {
-    color: '#888',
-    fontSize: 13,
+    marginTop: spacing.xl,
   },
 });
 

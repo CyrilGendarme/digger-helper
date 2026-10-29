@@ -1,100 +1,87 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  TextInput,
-  Modal,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-  ScrollView,
-} from 'react-native';
+import { View, Text, FlatList, Pressable, TextInput, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, type RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useSelector } from 'react-redux';
 import { RootState } from '../../store';
 import { useLabel } from '../../hooks/useLabel';
-import TextChip from '../../components/TextChip';
-import { FIELD_COLORS } from '../../components/TextChip/styles';
+import BottomSheet from '../../components/BottomSheet';
+import Button from '../../components/Button';
 import { FieldType, LabelledField } from '../../types/record';
 import type { RootStackParamList } from '../../navigation/types';
+import { colors, FIELD_META, spacing } from '../../theme';
 import styles from './styles';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Label'>;
 type LabelRoute = RouteProp<RootStackParamList, 'Label'>;
 
 // ── Constants ────────────────────────────────────────────────────────────────
-const FIELD_TYPES: { value: FieldType; label: string }[] = [
-  { value: 'artist_name', label: '🎤 Artist name' },
-  { value: 'album_name', label: '💿 Album name' },
-  { value: 'record_ref', label: '🔖 Record ref' },
-  { value: 'unknown', label: '❓ Unknown / skip' },
-];
-const MANUAL_FIELD_TYPES = FIELD_TYPES.filter((f) => f.value !== 'unknown');
-const FIELD_TYPE_LABEL = Object.fromEntries(
-  FIELD_TYPES.map(({ value, label }) => [value, label]),
-) as Record<FieldType, string>;
+const FIELD_TYPES: FieldType[] = ['artist_name', 'album_name', 'record_ref', 'unknown'];
+const MANUAL_FIELD_TYPES = FIELD_TYPES.filter((t) => t !== 'unknown');
 
-// ── Assign modal ─────────────────────────────────────────────────────────────
-interface AssignModalProps {
-  visible: boolean;
-  text: string;
-  currentType: FieldType;
+// ── Shared pieces ────────────────────────────────────────────────────────────
+const TypeBadge: React.FC<{ fieldType: FieldType; size?: number }> = ({ fieldType, size = 40 }) => {
+  const { icon, color } = FIELD_META[fieldType];
+  return (
+    <View
+      style={[
+        styles.typeBadge,
+        { width: size, height: size, borderRadius: size / 2, backgroundColor: `${color}22` },
+      ]}
+    >
+      <Ionicons name={icon} size={size * 0.48} color={color} />
+    </View>
+  );
+};
+
+interface TypeOptionsProps {
+  types: FieldType[];
+  selected: FieldType;
   onSelect: (ft: FieldType) => void;
-  onClose: () => void;
 }
 
-const AssignModal: React.FC<AssignModalProps> = ({
-  visible, text, currentType, onSelect, onClose,
-}) => (
-  <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-    <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.modalSheet}
-      >
-        <Text style={styles.modalTitle} numberOfLines={2}>"{text}"</Text>
-        <Text style={styles.modalSubtitle}>Assign a field type:</Text>
-        {FIELD_TYPES.map(({ value, label }) => (
-          <TouchableOpacity
-            key={value}
-            style={[
-              styles.modalOption,
-              currentType === value && { borderColor: FIELD_COLORS[value], borderWidth: 2 },
-            ]}
-            onPress={() => onSelect(value)}
-          >
-            <View style={[styles.dot, { backgroundColor: FIELD_COLORS[value] }]} />
-            <Text style={styles.modalOptionText}>{label}</Text>
-            {currentType === value && <Text style={styles.checkmark}>✓</Text>}
-          </TouchableOpacity>
-        ))}
-      </KeyboardAvoidingView>
-    </TouchableOpacity>
-  </Modal>
+const TypeOptions: React.FC<TypeOptionsProps> = ({ types, selected, onSelect }) => (
+  <View style={styles.options}>
+    {types.map((value) => {
+      const active = selected === value;
+      return (
+        <Pressable
+          key={value}
+          style={({ pressed }) => [
+            styles.option,
+            active && { borderColor: FIELD_META[value].color },
+            pressed && styles.optionPressed,
+          ]}
+          onPress={() => onSelect(value)}
+          accessibilityRole="radio"
+          accessibilityState={{ selected: active }}
+        >
+          <TypeBadge fieldType={value} size={34} />
+          <Text style={styles.optionText}>{FIELD_META[value].label}</Text>
+          {active && <Ionicons name="checkmark-circle" size={22} color={FIELD_META[value].color} />}
+        </Pressable>
+      );
+    })}
+  </View>
 );
 
-// ── Add-manual modal ─────────────────────────────────────────────────────────
-interface AddManualModalProps {
+// ── Add-manual sheet ─────────────────────────────────────────────────────────
+interface AddManualSheetProps {
   visible: boolean;
   onAdd: (field: LabelledField) => void;
   onClose: () => void;
 }
 
-const AddManualModal: React.FC<AddManualModalProps> = ({ visible, onAdd, onClose }) => {
+const AddManualSheet: React.FC<AddManualSheetProps> = ({ visible, onAdd, onClose }) => {
   const [text, setText] = useState('');
   const [fieldType, setFieldType] = useState<FieldType>('record_ref');
 
   const handleAdd = () => {
     if (!text.trim()) {
       Alert.alert('Empty', 'Please enter some text first.');
-      return;
-    }
-    if (fieldType === 'unknown') {
-      Alert.alert('Invalid type', 'Please choose Artist, Album, or Record ref.');
       return;
     }
     onAdd({ text: text.trim(), fieldType });
@@ -104,44 +91,20 @@ const AddManualModal: React.FC<AddManualModalProps> = ({ visible, onAdd, onClose
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <TouchableOpacity style={styles.modalBackdrop} activeOpacity={1} onPress={onClose}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.modalSheet}
-        >
-          <Text style={styles.modalTitle}>Add field manually</Text>
-          <TextInput
-            style={styles.textInput}
-            placeholder="Type the text…"
-            placeholderTextColor="#666"
-            value={text}
-            onChangeText={setText}
-            autoFocus
-          />
-          <Text style={styles.modalSubtitle}>Field type:</Text>
-          <ScrollView>
-            {MANUAL_FIELD_TYPES.map(({ value, label }) => (
-              <TouchableOpacity
-                key={value}
-                style={[
-                  styles.modalOption,
-                  fieldType === value && { borderColor: FIELD_COLORS[value], borderWidth: 2 },
-                ]}
-                onPress={() => setFieldType(value)}
-              >
-                <View style={[styles.dot, { backgroundColor: FIELD_COLORS[value] }]} />
-                <Text style={styles.modalOptionText}>{label}</Text>
-                {fieldType === value && <Text style={styles.checkmark}>✓</Text>}
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-          <TouchableOpacity style={styles.btnPrimary} onPress={handleAdd}>
-            <Text style={styles.btnText}>Add</Text>
-          </TouchableOpacity>
-        </KeyboardAvoidingView>
-      </TouchableOpacity>
-    </Modal>
+    <BottomSheet visible={visible} title="Add a field" onClose={onClose}>
+      <TextInput
+        style={styles.textInput}
+        placeholder="e.g. Quantic, Mango, TRU123…"
+        placeholderTextColor={colors.textFaint}
+        value={text}
+        onChangeText={setText}
+        onSubmitEditing={handleAdd}
+        returnKeyType="done"
+        autoFocus
+      />
+      <TypeOptions types={MANUAL_FIELD_TYPES} selected={fieldType} onSelect={setFieldType} />
+      <Button label="Add field" icon="add" onPress={handleAdd} style={styles.sheetButton} />
+    </BottomSheet>
   );
 };
 
@@ -149,6 +112,7 @@ const AddManualModal: React.FC<AddManualModalProps> = ({ visible, onAdd, onClose
 const LabelScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const route = useRoute<LabelRoute>();
+  const insets = useSafeAreaInsets();
   const shouldPrefill = route.params?.prefillFromOcr ?? false;
   const blocks = useSelector((state: RootState) => state.capture.blocks);
   const {
@@ -165,7 +129,7 @@ const LabelScreen: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [blocks, shouldPrefill]);
 
-  // Assign-type modal state
+  // Assign-type sheet state
   const [assignTarget, setAssignTarget] = useState<{ index: number; isManual: boolean } | null>(null);
   const [addManualVisible, setAddManualVisible] = useState(false);
 
@@ -173,7 +137,7 @@ const LabelScreen: React.FC = () => {
     setAssignTarget({ index, isManual });
   const closeAssign = () => setAssignTarget(null);
 
-  // Derive the field being assigned (for the modal display)
+  // Derive the field being assigned (for the sheet display)
   const targetField = assignTarget
     ? assignTarget.isManual
       ? manualFields[assignTarget.index]
@@ -202,41 +166,52 @@ const LabelScreen: React.FC = () => {
   };
 
   // ── Render helpers ─────────────────────────────────────────────────────────
-  const renderRow = (item: LabelledField, index: number, isManual: boolean) => (
-    <View key={isManual ? `manual-${index}` : undefined} style={styles.row}>
-      <TextChip
-        label={item.text}
-        fieldType={item.fieldType}
+  const renderRow = (item: LabelledField, index: number, isManual: boolean) => {
+    const meta = FIELD_META[item.fieldType];
+    const skipped = item.fieldType === 'unknown';
+    return (
+      <Pressable
+        key={isManual ? `manual-${index}` : undefined}
+        style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
         onPress={() => openAssign(index, isManual)}
-      />
-      <View style={styles.rowMeta}>
-        <Text style={styles.typeLabel}>{FIELD_TYPE_LABEL[item.fieldType] ?? '❓'}</Text>
-        <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel={`${item.text}, ${meta.label}. Change type`}
+      >
+        <TypeBadge fieldType={item.fieldType} />
+        <View style={styles.rowBody}>
+          <Text style={[styles.rowType, { color: meta.color }]}>{meta.label}</Text>
+          <Text style={[styles.rowText, skipped && styles.rowTextSkipped]} numberOfLines={2}>
+            {item.text}
+          </Text>
+        </View>
+        <Pressable
           onPress={() => (isManual ? removeManual(index) : remove(index))}
           style={styles.deleteBtn}
+          hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel={`Remove ${item.text}`}
         >
-          <Text style={styles.deleteText}>✕</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+          <Ionicons name="close" size={18} color={colors.textFaint} />
+        </Pressable>
+      </Pressable>
+    );
+  };
+
+  const isEmpty = fields.length === 0 && manualFields.length === 0;
 
   return (
     <View style={styles.container}>
-      {/* Legend */}
-      <View style={styles.legend}>
-        {MANUAL_FIELD_TYPES.map(({ value, label }) => (
-          <View key={value} style={styles.legendItem}>
-            <View style={[styles.dot, { backgroundColor: FIELD_COLORS[value] }]} />
-            <Text style={styles.legendText}>{label}</Text>
-          </View>
-        ))}
-      </View>
-
-      {/* OCR-extracted blocks */}
-      {fields.length === 0 && manualFields.length === 0 ? (
+      {isEmpty ? (
         <View style={styles.empty}>
-          <Text style={styles.emptyText}>No OCR text found. Add fields manually.</Text>
+          <View style={styles.emptyIcon}>
+            <Ionicons name="document-text-outline" size={30} color={colors.textMuted} />
+          </View>
+          <Text style={styles.emptyTitle}>
+            {shouldPrefill ? 'No text detected' : 'What are you looking for?'}
+          </Text>
+          <Text style={styles.emptyText}>
+            Add the artist, album or catalog number to search for the record.
+          </Text>
         </View>
       ) : (
         <FlatList
@@ -245,14 +220,15 @@ const LabelScreen: React.FC = () => {
           renderItem={({ item, index }) => renderRow(item, index, false)}
           contentContainerStyle={styles.list}
           ListHeaderComponent={
-            fields.length > 0 ? (
-              <Text style={styles.sectionHeader}>Extracted text — tap to assign</Text>
-            ) : null
+            <>
+              <Text style={styles.intro}>Tap a field to change what it is.</Text>
+              {fields.length > 0 && <Text style={styles.sectionHeader}>Scanned</Text>}
+            </>
           }
           ListFooterComponent={
             manualFields.length > 0 ? (
               <>
-                <Text style={styles.sectionHeader}>Manually added</Text>
+                <Text style={styles.sectionHeader}>Added by you</Text>
                 {manualFields.map((item, index) => renderRow(item, index, true))}
               </>
             ) : null
@@ -261,31 +237,40 @@ const LabelScreen: React.FC = () => {
       )}
 
       {/* Bottom actions */}
-      <View style={styles.footer}>
-        <TouchableOpacity
-          style={styles.btnSecondary}
+      <View style={[styles.footer, { paddingBottom: insets.bottom + spacing.md }]}>
+        <Button
+          label="Add field"
+          icon="add"
+          variant="secondary"
           onPress={() => setAddManualVisible(true)}
-        >
-          <Text style={styles.btnTextSecondary}>+ Add field manually</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.btnPrimary} onPress={handleNext}>
-          <Text style={styles.btnText}>Next →</Text>
-        </TouchableOpacity>
+          style={styles.footerButton}
+        />
+        <Button
+          label="Search"
+          icon="search"
+          onPress={handleNext}
+          disabled={isEmpty}
+          style={styles.footerButton}
+        />
       </View>
 
-      {/* Assign-type modal */}
+      {/* Assign-type sheet */}
       {targetField && (
-        <AssignModal
+        <BottomSheet
           visible={!!assignTarget}
-          text={targetField.text}
-          currentType={targetField.fieldType}
-          onSelect={handleSelect}
+          title={`“${targetField.text}”`}
+          subtitle="What is this?"
           onClose={closeAssign}
-        />
+        >
+          <TypeOptions
+            types={FIELD_TYPES}
+            selected={targetField.fieldType}
+            onSelect={handleSelect}
+          />
+        </BottomSheet>
       )}
 
-      {/* Add-manual modal */}
-      <AddManualModal
+      <AddManualSheet
         visible={addManualVisible}
         onAdd={addManual}
         onClose={() => setAddManualVisible(false)}

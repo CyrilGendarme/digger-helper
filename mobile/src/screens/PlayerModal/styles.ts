@@ -1,4 +1,5 @@
 import { StyleSheet, Dimensions } from 'react-native';
+import { colors, radius, spacing, type } from '../../theme';
 
 const { width } = Dimensions.get('window');
 // 16:9 ratio for the video area
@@ -7,50 +8,30 @@ const PLAYER_HEIGHT = Math.round((width * 9) / 16);
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: colors.bg,
   },
 
   // ── Header ────────────────────────────────────────────────
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#111',
-    borderBottomWidth: 1,
-    borderBottomColor: '#222',
-    gap: 10,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    gap: spacing.md,
   },
-  closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#2a2a2a',
+  iconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.surfaceRaised,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  closeBtnText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
   },
   headerTitle: {
+    ...type.heading,
     flex: 1,
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  externalBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#2a2a2a',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  externalBtnText: {
-    color: '#aaa',
-    fontSize: 16,
+    fontSize: 15,
+    textAlign: 'center',
   },
 
   // ── Player area ───────────────────────────────────────────
@@ -76,25 +57,26 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 24,
-    gap: 16,
+    padding: spacing.xl,
+    gap: spacing.md,
   },
   errorTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
+    ...type.heading,
     textAlign: 'center',
   },
   errorText: {
-    color: '#aaa',
+    ...type.caption,
     fontSize: 14,
     textAlign: 'center',
   },
   watchOnYouTubeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
     backgroundColor: '#FF0000',
-    borderRadius: 10,
-    paddingHorizontal: 24,
-    paddingVertical: 14,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
   },
   watchOnYouTubeBtnText: {
     color: '#fff',
@@ -102,14 +84,17 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   openExternalBtn: {
-    backgroundColor: '#E63946',
-    borderRadius: 10,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    backgroundColor: colors.accent,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
   },
   openExternalBtnText: {
     color: '#fff',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 15,
   },
 
@@ -117,27 +102,26 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    backgroundColor: '#111',
-    borderTopWidth: 1,
-    borderTopColor: '#222',
+    gap: spacing.sm + 2,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.lg,
   },
   platformBadge: {
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 4,
   },
   platformBadgeText: {
-    color: '#fff',
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
   },
   footerUrl: {
     flex: 1,
-    color: '#555',
-    fontSize: 11,
+    color: colors.textFaint,
+    fontSize: 12,
   },
 });
 

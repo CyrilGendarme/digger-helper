@@ -1,77 +1,70 @@
 import { StyleSheet } from 'react-native';
+import { colors, radius, spacing, type } from '../../theme';
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#111',
-  },
-
-  // ── Legend ─────────────────────────────────────────────
-  legend: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#2a2a2a',
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  legendText: {
-    color: '#aaa',
-    fontSize: 11,
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    backgroundColor: colors.bg,
   },
 
   // ── List ──────────────────────────────────────────────
   list: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xl,
+  },
+  intro: {
+    ...type.caption,
+    fontSize: 14,
+    marginTop: spacing.xs,
   },
   sectionHeader: {
-    color: '#666',
-    fontSize: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginTop: 16,
-    marginBottom: 8,
+    ...type.overline,
+    marginTop: spacing.xl,
+    marginBottom: spacing.sm,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#1e1e1e',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 8,
-    gap: 8,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.sm,
+    gap: spacing.md,
   },
-  rowMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flexShrink: 0,
+  rowPressed: {
+    backgroundColor: colors.surfaceRaised,
   },
-  typeLabel: {
-    color: '#888',
+  rowBody: {
+    flex: 1,
+    gap: 2,
+  },
+  rowType: {
     fontSize: 12,
-    maxWidth: 110,
+    fontWeight: '700',
+  },
+  rowText: {
+    ...type.body,
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  rowTextSkipped: {
+    color: colors.textFaint,
+    textDecorationLine: 'line-through',
+  },
+  typeBadge: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   deleteBtn: {
-    padding: 4,
-  },
-  deleteText: {
-    color: '#555',
-    fontSize: 14,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.surfaceRaised,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 
   // ── Empty state ───────────────────────────────────────
@@ -79,105 +72,80 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 32,
+    padding: spacing.xxl,
+    gap: spacing.sm,
+  },
+  emptyIcon: {
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: colors.surfaceRaised,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: spacing.sm,
+  },
+  emptyTitle: {
+    ...type.title,
+    textAlign: 'center',
   },
   emptyText: {
-    color: '#555',
+    ...type.caption,
     fontSize: 15,
+    lineHeight: 22,
     textAlign: 'center',
+    maxWidth: 300,
   },
 
   // ── Footer ────────────────────────────────────────────
   footer: {
     flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingBottom: 40,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#2a2a2a',
-    backgroundColor: '#111',
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: colors.border,
+    backgroundColor: colors.bg,
   },
-  btnPrimary: {
+  footerButton: {
     flex: 1,
-    backgroundColor: '#E63946',
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  btnSecondary: {
-    flex: 1,
-    borderWidth: 1,
-    borderColor: '#444',
-    borderRadius: 10,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  btnText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  btnTextSecondary: {
-    color: '#aaa',
-    fontSize: 14,
   },
 
-  // ── Modals ────────────────────────────────────────────
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'flex-end',
+  // ── Sheets ────────────────────────────────────────────
+  options: {
+    gap: spacing.sm,
   },
-  modalSheet: {
-    backgroundColor: '#1e1e1e',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 24,
-    paddingBottom: 40,
-    gap: 8,
-  },
-  modalTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  modalSubtitle: {
-    color: '#888',
-    fontSize: 13,
-    marginBottom: 4,
-  },
-  modalOption: {
+  option: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    backgroundColor: '#2a2a2a',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 6,
-    borderWidth: 1,
+    gap: spacing.md,
+    backgroundColor: colors.surfaceRaised,
+    borderRadius: radius.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm + 2,
+    borderWidth: 1.5,
     borderColor: 'transparent',
   },
-  modalOptionText: {
-    color: '#fff',
-    fontSize: 15,
+  optionPressed: {
+    backgroundColor: colors.surfacePressed,
+  },
+  optionText: {
+    ...type.body,
+    fontWeight: '600',
     flex: 1,
   },
-  checkmark: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-  },
   textInput: {
-    backgroundColor: '#2a2a2a',
-    color: '#fff',
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    marginBottom: 8,
+    backgroundColor: colors.surfaceRaised,
+    color: colors.text,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md + 2,
+    fontSize: 16,
+    marginBottom: spacing.sm,
+  },
+  sheetButton: {
+    marginTop: spacing.md,
   },
 });
 

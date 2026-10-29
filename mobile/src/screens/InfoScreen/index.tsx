@@ -1,23 +1,20 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import {
-  View,
-  Text,
-  SectionList,
-  ActivityIndicator,
-  TouchableOpacity,
-  Linking,
-} from 'react-native';
+import { View, Text, SectionList, ActivityIndicator, Linking, RefreshControl } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSelector } from 'react-redux';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { RootState } from '../../store';
 import { useDiscogs } from '../../hooks/useDiscogs';
+import Button from '../../components/Button';
 import RecordCard from '../../components/RecordCard';
 import LinkItem from '../../components/LinkItem';
 import { LabelledField, RecordInfo, DiscogsResult } from '../../types/record';
 import { MediaLink } from '../../types/search';
 import type { RootStackParamList } from '../../navigation/types';
+import { colors, FIELD_META, spacing, type IconName } from '../../theme';
 import styles from './styles';
 
 type Nav = NativeStackNavigationProp<RootStackParamList, 'Info'>;
@@ -35,8 +32,20 @@ function buildRecordInfo(fields: LabelledField[], manualFields: LabelledField[])
   };
 }
 
+interface Section {
+  key: string;
+  title: string;
+  icon: IconName;
+  loading: boolean;
+  loadingText: string;
+  error: string | null;
+  emptyText: string;
+  data: (DiscogsResult | MediaLink)[];
+}
+
 const InfoScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  const insets = useSafeAreaInsets();
   const { fields, manualFields } = useSelector((state: RootState) => state.label);
   const {
     discogsLoading, discogsError, discogsResults,
@@ -59,6 +68,13 @@ const InfoScreen: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const isBusy = discogsLoading || mediaLoading;
+  // The media search starts once Discogs has answered, so it is pending meanwhile.
+  const mediaPending = discogsLoading || mediaLoading;
+  const refresh = () => {
+    if (!isBusy) fetchAll(recordInfo);
+  };
+
   const handleLinkPress = (link: MediaLink) => {
     if (link.platform === 'bandcamp') {
       Linking.openURL(link.url);
@@ -67,110 +83,130 @@ const InfoScreen: React.FC = () => {
     navigation.navigate('Player', { url: link.url, title: link.title, platform: link.platform });
   };
 
-  const isBusy = discogsLoading || mediaLoading;
-
   // ── Section list data ────────────────────────────────────────────────────
-  const bandcampLinks = mediaLinks.filter((l) => l.platform === 'bandcamp');
-  const streamLinks   = mediaLinks.filter((l) => l.platform !== 'bandcamp');
-
-  const sections = [
+  const sections: Section[] = [
     {
       key: 'discogs',
-      title: '💿 Discogs results',
+      title: 'Discogs',
+      icon: 'disc',
       loading: discogsLoading,
+      loadingText: 'Looking up the release…',
       error: discogsError,
+      emptyText: 'No matching release on Discogs.',
       data: discogsResults,
-      renderItem: ({ item }: { item: unknown }) => (
-        <RecordCard result={item as DiscogsResult} />
-      ),
-    },
-    {
-      key: 'bandcamp',
-      title: '🎵 Bandcamp',
-      loading: mediaLoading,
-      error: mediaError,
-      data: bandcampLinks,
-      renderItem: ({ item }: { item: unknown }) => (
-        <LinkItem item={item as MediaLink} onPress={() => handleLinkPress(item as MediaLink)} />
-      ),
     },
     {
       key: 'media',
-      title: '🎬 YouTube & SoundCloud',
-      loading: mediaLoading,
+      title: 'Listen',
+      icon: 'headset',
+      loading: mediaPending,
+      loadingText: 'Searching YouTube & SoundCloud…',
       error: mediaError,
-      data: streamLinks,
-      renderItem: ({ item }: { item: unknown }) => (
-        <LinkItem item={item as MediaLink} onPress={() => handleLinkPress(item as MediaLink)} />
-      ),
+      emptyText: 'Nothing found on YouTube or SoundCloud.',
+      data: mediaLinks.filter((l) => l.platform !== 'bandcamp'),
+    },
+    {
+      key: 'bandcamp',
+      title: 'Buy on Bandcamp',
+      icon: 'cart',
+      loading: mediaPending,
+      loadingText: 'Searching Bandcamp…',
+      error: mediaError,
+      emptyText: 'Not found on Bandcamp.',
+      data: mediaLinks.filter((l) => l.platform === 'bandcamp'),
     },
   ];
 
+  const query = (['artist_name', 'album_name', 'record_ref'] as const)
+    .map((key) => ({ key, text: recordInfo[key] }))
+    .filter((q): q is { key: typeof q.key; text: string } => !!q.text);
+
   return (
-    <SectionList
+    <SectionList<DiscogsResult | MediaLink, Section>
       style={styles.container}
-      contentContainerStyle={styles.content}
-      sections={sections.map((s) => ({ ...s, data: s.data as object[] }))}
+      contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing.xxl }]}
+      sections={sections}
       keyExtractor={(item, index) => {
         const { id, url } = item as { id?: number; url?: string };
         return `${id ?? url ?? index}`;
       }}
       stickySectionHeadersEnabled={false}
-      renderSectionHeader={({ section }) => {
-        const s = section as typeof sections[number];
-        return (
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{s.title}</Text>
-            {s.loading && <ActivityIndicator size="small" color="#E63946" />}
-          </View>
-        );
-      }}
+      refreshControl={
+        <RefreshControl
+          refreshing={false}
+          onRefresh={refresh}
+          tintColor={colors.textMuted}
+          colors={[colors.accent]}
+          progressBackgroundColor={colors.surfaceRaised}
+        />
+      }
+      renderSectionHeader={({ section }) => (
+        <View style={styles.sectionHeader}>
+          <Ionicons name={section.icon} size={18} color={colors.accent} />
+          <Text style={styles.sectionTitle}>{section.title}</Text>
+          {!section.loading && section.data.length > 0 && (
+            <View style={styles.countPill}>
+              <Text style={styles.countText}>{section.data.length}</Text>
+            </View>
+          )}
+        </View>
+      )}
       renderSectionFooter={({ section }) => {
-        const s = section as typeof sections[number];
-        if (s.loading) return null;
-        if (s.error) {
+        if (section.loading) {
           return (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{s.error}</Text>
+            <View style={styles.statusCard}>
+              <ActivityIndicator size="small" color={colors.accent} />
+              <Text style={styles.statusText}>{section.loadingText}</Text>
             </View>
           );
         }
-        if (s.data.length === 0) {
-          return <Text style={styles.emptyText}>No results found.</Text>;
+        if (section.error) {
+          return (
+            <View style={[styles.statusCard, styles.errorCard]}>
+              <Ionicons name="alert-circle" size={18} color={colors.danger} />
+              <Text style={styles.errorText} numberOfLines={4}>{section.error}</Text>
+            </View>
+          );
+        }
+        if (section.data.length === 0) {
+          return (
+            <View style={styles.statusCard}>
+              <Ionicons name="search-outline" size={16} color={colors.textFaint} />
+              <Text style={styles.statusText}>{section.emptyText}</Text>
+            </View>
+          );
         }
         return null;
       }}
-      renderItem={({ item, section }) => {
-        const s = section as typeof sections[number];
-        return s.renderItem({ item });
-      }}
+      renderItem={({ item, section }) =>
+        section.key === 'discogs' ? (
+          <RecordCard result={item as DiscogsResult} />
+        ) : (
+          <LinkItem item={item as MediaLink} onPress={() => handleLinkPress(item as MediaLink)} />
+        )
+      }
       ListHeaderComponent={
-        <View style={styles.infoBar}>
-          {recordInfo.artist_name && (
-            <Text style={styles.infoChip}>🎤 {recordInfo.artist_name}</Text>
-          )}
-          {recordInfo.album_name && (
-            <Text style={styles.infoChip}>💿 {recordInfo.album_name}</Text>
-          )}
-          {recordInfo.record_ref && (
-            <Text style={styles.infoChip}>🔖 {recordInfo.record_ref}</Text>
-          )}
+        <View style={styles.queryBar}>
+          {query.map(({ key, text }) => (
+            <View key={key} style={styles.queryChip}>
+              <Ionicons name={FIELD_META[key].icon} size={13} color={FIELD_META[key].color} />
+              <Text style={styles.queryText} numberOfLines={1}>{text}</Text>
+            </View>
+          ))}
         </View>
       }
       ListFooterComponent={
-        <TouchableOpacity
-          style={[styles.retryBtn, isBusy && styles.retryBtnDisabled]}
+        <Button
+          label="Search again"
+          icon="refresh"
+          variant="ghost"
+          onPress={refresh}
           disabled={isBusy}
-          onPress={() => {
-            fetchAll(recordInfo);
-          }}
-        >
-          <Text style={styles.retryText}>↻ Refresh</Text>
-        </TouchableOpacity>
+          style={styles.retry}
+        />
       }
     />
   );
 };
 
 export default InfoScreen;
-

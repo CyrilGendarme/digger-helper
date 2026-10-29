@@ -1,67 +1,72 @@
 import { StyleSheet } from 'react-native';
+import { colors, radius, spacing } from '../../theme';
 
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1e1e1e',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 8,
-    gap: 12,
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: spacing.sm + 2,
+    marginBottom: spacing.sm,
+    gap: spacing.md,
+  },
+  rowPressed: {
+    backgroundColor: colors.surfaceRaised,
   },
   thumb: {
-    width: 72,
-    height: 48,
-    borderRadius: 6,
+    width: 88,
+    height: 56,
+    borderRadius: radius.sm + 2,
   },
   thumbPlaceholder: {
-    backgroundColor: '#2a2a2a',
     justifyContent: 'center',
     alignItems: 'center',
   },
   info: {
     flex: 1,
-    gap: 4,
+    gap: 5,
   },
   title: {
-    color: '#fff',
-    fontSize: 13,
+    color: colors.text,
+    fontSize: 14,
     fontWeight: '600',
+    lineHeight: 19,
   },
-  bottom: {
+  meta: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
   },
-  badge: {
-    borderRadius: 4,
-    paddingHorizontal: 5,
-    paddingVertical: 2,
-  },
-  badgeText: {
-    color: '#fff',
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  channel: {
-    color: '#888',
-    fontSize: 11,
-    flex: 1,
-  },
-  duration: {
-    color: '#555',
-    fontSize: 11,
+  metaText: {
+    color: colors.textMuted,
+    fontSize: 12,
+    flexShrink: 1,
   },
   price: {
-    color: '#1DA0C3',
-    fontSize: 11,
-    fontWeight: '700',
     marginLeft: 'auto',
+    backgroundColor: colors.successSoft,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 2,
   },
-  arrow: {
-    color: '#444',
-    fontSize: 16,
+  priceText: {
+    color: colors.success,
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  action: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: colors.surfaceRaised,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  playIcon: {
+    marginLeft: 2, // optical centering of the triangle
   },
 });
 

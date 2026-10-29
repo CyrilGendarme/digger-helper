@@ -9,8 +9,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView, WebViewNavigation } from 'react-native-webview';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { RootStackParamList } from '../../navigation/types';
+import { colors, PLATFORM_META } from '../../theme';
 import styles from './styles';
 
 type PlayerRoute = RouteProp<RootStackParamList, 'Player'>;
@@ -88,22 +90,30 @@ const PlayerModal: React.FC = () => {
   const webViewRef = useRef<WebView>(null);
 
   const embedUrl = buildEmbedUrl(url, platform);
+  const platformMeta = PLATFORM_META[platform];
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
 
       {/* ── Header ── */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeBtn}>
-          <Text style={styles.closeBtnText}>✕</Text>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.iconBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Close player"
+        >
+          <Ionicons name="chevron-down" size={22} color={colors.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle} numberOfLines={1}>{title}</Text>
         <TouchableOpacity
           onPress={() => Linking.openURL(url)}
-          style={styles.externalBtn}
+          style={styles.iconBtn}
+          accessibilityRole="link"
+          accessibilityLabel={`Open in ${platformMeta.label}`}
         >
-          <Text style={styles.externalBtnText}>↗</Text>
+          <Ionicons name="open-outline" size={19} color={colors.text} />
         </TouchableOpacity>
       </View>
 
@@ -111,7 +121,7 @@ const PlayerModal: React.FC = () => {
       <View style={styles.playerWrapper}>
         {loading && !error && (
           <View style={styles.loaderOverlay}>
-            <ActivityIndicator size="large" color="#E63946" />
+            <ActivityIndicator size="large" color={colors.accent} />
           </View>
         )}
 
@@ -119,25 +129,29 @@ const PlayerModal: React.FC = () => {
           <View style={styles.errorContainer}>
             {embedBlocked ? (
               <>
-                <Text style={styles.errorTitle}>Embedding disabled</Text>
+                <Ionicons name="eye-off-outline" size={32} color={colors.textMuted} />
+                <Text style={styles.errorTitle}>Can't play this here</Text>
                 <Text style={styles.errorText}>
-                  The video owner has turned off embedded playback.
+                  The owner has turned off playback outside YouTube.
                 </Text>
                 <TouchableOpacity
                   style={styles.watchOnYouTubeBtn}
                   onPress={() => Linking.openURL(url)}
                 >
-                  <Text style={styles.watchOnYouTubeBtnText}>Watch on YouTube ↗</Text>
+                  <Ionicons name="logo-youtube" size={18} color="#fff" />
+                  <Text style={styles.watchOnYouTubeBtnText}>Watch on YouTube</Text>
                 </TouchableOpacity>
               </>
             ) : (
               <>
+                <Ionicons name="cloud-offline-outline" size={32} color={colors.textMuted} />
                 <Text style={styles.errorText}>{error}</Text>
                 <TouchableOpacity
                   style={styles.openExternalBtn}
                   onPress={() => Linking.openURL(url)}
                 >
-                  <Text style={styles.openExternalBtnText}>Open in browser ↗</Text>
+                  <Ionicons name="open-outline" size={17} color="#fff" />
+                  <Text style={styles.openExternalBtnText}>Open in browser</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -188,13 +202,11 @@ const PlayerModal: React.FC = () => {
 
       {/* ── Platform badge ── */}
       <View style={styles.footer}>
-        <View
-          style={[
-            styles.platformBadge,
-            { backgroundColor: platform === 'youtube' ? '#FF0000' : '#FF5500' },
-          ]}
-        >
-          <Text style={styles.platformBadgeText}>{platform.toUpperCase()}</Text>
+        <View style={[styles.platformBadge, { backgroundColor: `${platformMeta.color}22` }]}>
+          <Ionicons name={platformMeta.icon} size={14} color={platformMeta.color} />
+          <Text style={[styles.platformBadgeText, { color: platformMeta.color }]}>
+            {platformMeta.label}
+          </Text>
         </View>
         <Text style={styles.footerUrl} numberOfLines={1}>{url}</Text>
       </View>
