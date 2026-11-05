@@ -10,7 +10,7 @@ const CORNER_RADIUS = 10;
 
 const styles = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     flexDirection: 'column',
   },
   topMask: {

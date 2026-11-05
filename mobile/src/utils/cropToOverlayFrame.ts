@@ -1,4 +1,4 @@
-import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import type { LayoutRectangle } from 'react-native';
 
 import { FRAME_H, FRAME_W } from '../components/CameraOverlay/styles';
@@ -44,11 +44,14 @@ export async function cropToOverlayFrame(
   const width = clamp(Math.round(FRAME_W / scale), 1, imageWidth - originX);
   const height = clamp(Math.round(FRAME_H / scale), 1, imageHeight - originY);
 
-  const cropped = await manipulateAsync(
-    photo.uri,
-    [{ crop: { originX, originY, width, height } }],
-    { compress: 0.95, format: SaveFormat.JPEG },
-  );
-
-  return cropped.uri;
+  const context = ImageManipulator.manipulate(photo.uri).crop({ originX, originY, width, height });
+  const image = await context.renderAsync();
+  try {
+    const cropped = await image.saveAsync({ compress: 0.95, format: SaveFormat.JPEG });
+    return cropped.uri;
+  } finally {
+    // Free the native image buffers right away rather than waiting for GC.
+    image.release();
+    context.release();
+  }
 }

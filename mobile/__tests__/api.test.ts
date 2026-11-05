@@ -3,7 +3,9 @@ import * as SecureStore from 'expo-secure-store';
 import {
   apiRequest,
   buildApiUrl,
+  devServerOrigin,
   getAuthHeaders,
+  resolveApiBaseUrl,
   restoreSession,
   setAuthToken,
   startSession,
@@ -34,7 +36,7 @@ function fakeJwt(exp: number): string {
 const nowSec = () => Math.floor(Date.now() / 1000);
 
 const mockFetch = jest.fn();
-global.fetch = mockFetch as unknown as typeof fetch;
+globalThis.fetch = mockFetch as unknown as typeof fetch;
 
 function response(status: number, body: unknown): Response {
   return {
@@ -124,5 +126,30 @@ describe('session persistence', () => {
     await startSession('abc');
     expect(await SecureStore.getItemAsync('auth_token')).toBe('abc');
     expect(store.getState().auth.isAuthenticated).toBe(true);
+  });
+});
+
+describe('resolveApiBaseUrl', () => {
+  it('prefers an explicit EXPO_PUBLIC_API_URL and appends /api/v1', () => {
+    expect(resolveApiBaseUrl('https://api.example.com/', 'x:8081')).toBe('https://api.example.com/api/v1');
+    expect(resolveApiBaseUrl('http://10.0.0.2:8000/api/v1', null)).toBe('http://10.0.0.2:8000/api/v1');
+  });
+
+  it('falls back to the Expo dev server the app was loaded from', () => {
+    expect(resolveApiBaseUrl(undefined, '192.168.1.42:8081')).toBe('http://192.168.1.42:8081/api/v1');
+    expect(resolveApiBaseUrl('  ', 'abc-anonymous-8081.exp.direct')).toBe(
+      'https://abc-anonymous-8081.exp.direct/api/v1',
+    );
+  });
+
+  it('uses localhost when nothing else is known', () => {
+    expect(resolveApiBaseUrl(undefined, undefined)).toBe('http://localhost:8000/api/v1');
+  });
+});
+
+describe('devServerOrigin', () => {
+  it('strips schemes and paths', () => {
+    expect(devServerOrigin('exp://10.0.0.5:8081/--/home')).toBe('http://10.0.0.5:8081');
+    expect(devServerOrigin('')).toBeNull();
   });
 });

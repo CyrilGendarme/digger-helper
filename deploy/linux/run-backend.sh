@@ -9,9 +9,9 @@ source "$DEPLOY_DIR/config.env"
 
 # Behind a tunnel or proxy the API only needs to be reachable locally.
 HOST=0.0.0.0
-if [[ "$API_MODE" == "cloudflare" ]]; then
-  HOST=127.0.0.1
-fi
+case "$API_MODE" in
+  expo | cloudflare) HOST=127.0.0.1 ;;
+esac
 
 cd "$ROOT_DIR/backend"
 exec .venv/bin/uvicorn main:app --host "$HOST" --port "$BACKEND_PORT" --proxy-headers

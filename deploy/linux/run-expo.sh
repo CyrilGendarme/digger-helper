@@ -16,6 +16,11 @@ lan_ip() {
 
 tunnel_pid=""
 case "$API_MODE" in
+  expo)
+    # The app calls the dev server it was loaded from; metro.config.js proxies
+    # /api/* to the backend. The public URL is only known once Expo is up.
+    api_url=""
+    ;;
   lan)
     ip_addr="$(lan_ip)"
     if [[ -z "$ip_addr" ]]; then
@@ -53,13 +58,16 @@ case "$API_MODE" in
     fi
     ;;
   *)
-    echo "Unknown API_MODE '$API_MODE' (expected lan, cloudflare or url)" >&2
+    echo "Unknown API_MODE '$API_MODE' (expected expo, lan, cloudflare or url)" >&2
     exit 1
     ;;
 esac
 
-echo "$api_url" >"$STATE_DIR/api-url"
-echo "Backend URL for the app: $api_url"
+rm -f "$STATE_DIR/api-url"
+if [[ -n "$api_url" ]]; then
+  echo "$api_url" >"$STATE_DIR/api-url"
+  echo "Backend URL for the app: $api_url"
+fi
 
 EXPO_LOG="$STATE_DIR/expo.log"
 rm -f "$STATE_DIR/expo-url"
@@ -86,6 +94,10 @@ watchdog() {
   fi
   link="exp://${base_url#*://}"
   echo "$link" >"$STATE_DIR/expo-url"
+  if [[ "$API_MODE" == "expo" ]]; then
+    echo "$base_url/api/v1" >"$STATE_DIR/api-url"
+    echo "Backend URL for the app: $base_url/api/v1 (proxied to 127.0.0.1:$BACKEND_PORT)"
+  fi
   echo "Expo Go link: $link"
 
   while sleep 60; do
@@ -102,8 +114,11 @@ watchdog() {
 }
 
 # A real environment variable takes precedence over mobile/.env, so the
-# developer's .env is left untouched.
+# developer's .env is left untouched. Empty (API_MODE=expo) makes the app use
+# the dev server it was loaded from.
 export EXPO_PUBLIC_API_URL="$api_url"
+# Where the dev server's /api/* proxy (metro.config.js) forwards to.
+export DIGGER_BACKEND_URL="http://127.0.0.1:$BACKEND_PORT"
 if [[ "$EXPO_HOST" == "lan" ]]; then
   # Make the manifest point the phone at this machine instead of localhost.
   REACT_NATIVE_PACKAGER_HOSTNAME="$(lan_ip)"

@@ -45,7 +45,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#000',
   },
   loaderOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#000',

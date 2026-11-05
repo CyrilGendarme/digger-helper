@@ -1,16 +1,15 @@
+import Constants from 'expo-constants';
 import * as SecureStore from 'expo-secure-store';
 
 import { store } from '../store';
 import { login, logout, restored } from '../store/slices/authSlice';
 
-const DEFAULT_API_BASE_URL = 'http://localhost:8000/api/v1';
+const FALLBACK_API_ORIGIN = 'http://localhost:8000';
 const REQUEST_TIMEOUT_MS = 60_000;
 const TOKEN_STORAGE_KEY = 'auth_token';
 
-function normalizeApiBaseUrl(rawValue?: string): string {
-  const value = (rawValue ?? '').trim();
-  const candidate = value || DEFAULT_API_BASE_URL;
-  const withoutTrailingSlash = candidate.replace(/\/+$/, '');
+function normalizeApiBaseUrl(value: string): string {
+  const withoutTrailingSlash = value.trim().replace(/\/+$/, '');
 
   if (/\/api\/v1$/i.test(withoutTrailingSlash)) {
     return withoutTrailingSlash;
@@ -19,7 +18,30 @@ function normalizeApiBaseUrl(rawValue?: string): string {
   return `${withoutTrailingSlash}/api/v1`;
 }
 
-export const API_BASE_URL = normalizeApiBaseUrl(process.env.EXPO_PUBLIC_API_URL);
+/**
+ * Origin of the Expo dev server the app was loaded from, e.g.
+ * "http://192.168.1.42:8081" (LAN) or "https://abc-8081.exp.direct" (tunnel).
+ * The dev server proxies /api/* to the backend (see metro.config.js), so this
+ * address works wherever the bundle itself could be downloaded.
+ */
+export function devServerOrigin(hostUri: string | null | undefined): string | null {
+  const host = (hostUri ?? '').trim().replace(/^[a-z]+:\/\//i, '').split('/')[0];
+  if (!host) {
+    return null;
+  }
+  // Tunnels are served on the default HTTPS port, so their hostUri has no port;
+  // a LAN dev server always shows its port (8081 by default).
+  return /:\d+$/.test(host) ? `http://${host}` : `https://${host}`;
+}
+
+export function resolveApiBaseUrl(explicitUrl: string | undefined, hostUri: string | null | undefined): string {
+  if (explicitUrl && explicitUrl.trim()) {
+    return normalizeApiBaseUrl(explicitUrl);
+  }
+  return normalizeApiBaseUrl(devServerOrigin(hostUri) ?? FALLBACK_API_ORIGIN);
+}
+
+export const API_BASE_URL = resolveApiBaseUrl(process.env.EXPO_PUBLIC_API_URL, Constants.expoConfig?.hostUri);
 
 export function buildApiUrl(path: string): string {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;

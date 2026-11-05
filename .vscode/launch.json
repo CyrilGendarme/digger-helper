@@ -1,0 +1,12 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Expo: Start tunnel",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run start:tunnel",
+      "cwd": "${workspaceFolder}/mobile"
+    }
+  ]
+}

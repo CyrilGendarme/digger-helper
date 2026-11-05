@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Linking,
-  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { WebView, WebViewNavigation } from 'react-native-webview';
@@ -87,15 +86,13 @@ const PlayerModal: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [embedBlocked, setEmbedBlocked] = useState(false);
-  const webViewRef = useRef<WebView>(null);
+  const webViewRef = useRef<WebView<object> | null>(null);
 
   const embedUrl = buildEmbedUrl(url, platform);
   const platformMeta = PLATFORM_META[platform];
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.bg} />
-
       {/* ── Header ── */}
       <View style={styles.header}>
         <TouchableOpacity
@@ -157,7 +154,7 @@ const PlayerModal: React.FC = () => {
             )}
           </View>
         ) : (
-          <WebView
+          <WebView<object>
             ref={webViewRef}
             style={styles.webview}
             originWhitelist={['*']}
@@ -215,4 +212,3 @@ const PlayerModal: React.FC = () => {
 };
 
 export default PlayerModal;
-

@@ -91,14 +91,26 @@ uvicorn main:app --reload
 ```bash
 cd mobile
 npm install --legacy-peer-deps
-cp .env.example .env
-# Set EXPO_PUBLIC_API_URL to the local IP of the machine running the backend
-# e.g. EXPO_PUBLIC_API_URL=http://192.168.1.42:8000/api/v1
-
-npx expo start
+npx expo start --tunnel     # or: npx expo start  (phone on the same network)
 ```
 
 Scan the QR code with the **Expo Go** app on your phone (iOS or Android).
+
+No API URL to configure: the app sends its API calls to the Expo dev server it was
+loaded from, and the dev server forwards `/api/*` to the backend on the same machine
+(`mobile/metro.config.js`). Whatever URL opens the app — LAN or tunnel — also reaches
+the backend. If the backend is not on `127.0.0.1:8000`, set `DIGGER_BACKEND_URL` in
+`mobile/.env`.
+
+### One command, any machine
+
+```bash
+scripts/dev.sh        # backend + Expo tunnel in the foreground; phone can be anywhere
+scripts/dev.sh lan    # phone on the same network
+```
+
+It creates the virtualenv and `backend/.env` when missing, picks free ports if 8000 / 8081
+are taken, and stops the backend when you press Ctrl-C.
 
 ---
 
@@ -109,10 +121,15 @@ services that start at boot and restart on failure, so Expo Go can open the app 
 
 ```bash
 git clone https://github.com/CyrilGendarme/digger-helper.git && cd digger-helper
-deploy/linux/install.sh                      # phone on the same network as the server
-deploy/linux/install.sh --api-mode cloudflare   # phone anywhere (free Cloudflare quick tunnel)
+deploy/linux/install.sh                      # phone anywhere — API goes through the Expo tunnel
+deploy/linux/install.sh --api-mode lan          # phone on the same network, backend on LAN_IP:8000
+deploy/linux/install.sh --api-mode cloudflare   # API through a separate Cloudflare quick tunnel
 deploy/linux/install.sh --api-url https://api.example.com   # your own domain / reverse proxy
 ```
+
+The default (`API_MODE=expo`) works on any server or VPS, including behind NAT or a
+firewall: only outgoing connections are needed, and the backend listens on `127.0.0.1` only.
+If port 8000 or 8081 is already used by another program, the installer picks the next free one.
 
 Run it as your normal user (it uses `sudo` where needed). It needs Python 3.11+, Node.js 20+
 and systemd; on Debian/Ubuntu it installs Tesseract itself. It also:
@@ -161,7 +178,8 @@ Settings live in `deploy/linux/config.env` (API mode, ports, `EXPO_HOST=tunnel|l
 
 | Variable | Description |
 |---|---|
-| `EXPO_PUBLIC_API_URL` | Full URL to the backend API, e.g. `http://192.168.1.42:8000/api/v1` |
+| `EXPO_PUBLIC_API_URL` | Optional. Full backend URL, e.g. `https://api.example.com/api/v1`. When unset, the app uses the Expo dev server it was loaded from (recommended in development). |
+| `DIGGER_BACKEND_URL` | Optional. Where the dev server's `/api/*` proxy finds the backend (default `http://127.0.0.1:8000`). |
 
 ---
 
@@ -189,7 +207,7 @@ npm test
 
 | Layer | Technology |
 |---|---|
-| Mobile | [Expo](https://expo.dev) ~54 · React Native · TypeScript · Redux Toolkit |
+| Mobile | [Expo](https://expo.dev) ~58 · React Native · TypeScript · Redux Toolkit |
 | Backend | [FastAPI](https://fastapi.tiangolo.com) · Python 3.11+ · Uvicorn |
 | OCR | [Tesseract OCR](https://github.com/tesseract-ocr/tesseract) |
 | Bandcamp scraping | Selenium + Chrome/Chromium (bundled in the Docker image) |

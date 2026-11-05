@@ -3,7 +3,7 @@ import { View, Text, TextInput, Pressable, KeyboardAvoidingView, Platform } from
 import { Ionicons } from '@expo/vector-icons';
 
 import Button from '../../components/Button';
-import { buildApiUrl, startSession } from '../../services/api';
+import { API_BASE_URL, buildApiUrl, startSession } from '../../services/api';
 import { colors } from '../../theme';
 import styles from './styles';
 
@@ -31,7 +31,13 @@ const LoginScreen: React.FC = () => {
       });
 
       if (!response.ok) {
-        setError(response.status === 401 ? 'Wrong passcode — try again.' : `Server error (${response.status}).`);
+        setError(response.status === 401
+            ? 'Wrong passcode — try again.'
+            : response.status === 502
+              ? 'The server is up but the backend is not running.'
+              : response.status === 404
+                ? `No Digger Helper backend at ${API_BASE_URL} (404) — another program may be using its port.`
+                : `Server error (${response.status}).`);
         setInput('');
         return;
       }
@@ -39,7 +45,7 @@ const LoginScreen: React.FC = () => {
       const data = await response.json();
       await startSession(data.access_token);
     } catch {
-      setError("Can't reach the server. Check your connection.");
+      setError(`Can't reach the server at ${API_BASE_URL}. Check your connection.`);
     } finally {
       setLoading(false);
     }

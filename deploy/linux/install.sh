@@ -5,7 +5,7 @@
 # Run as the user that should own the services (not root); sudo is used for the
 # system-level steps.
 #
-#   deploy/linux/install.sh [--api-mode lan|cloudflare|url] [--api-url URL] [--expo-host tunnel|lan]
+#   deploy/linux/install.sh [--api-mode expo|lan|cloudflare|url] [--api-url URL] [--expo-host tunnel|lan]
 set -euo pipefail
 
 DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -44,7 +44,7 @@ while [[ $# -gt 0 ]]; do
     *) usage; die "unknown option: $1" ;;
   esac
 done
-case "$opt_api_mode" in "" | lan | cloudflare | url) ;; *) die "--api-mode must be lan, cloudflare or url" ;; esac
+case "$opt_api_mode" in "" | expo | lan | cloudflare | url) ;; *) die "--api-mode must be expo, lan, cloudflare or url" ;; esac
 case "$opt_expo_host" in "" | tunnel | lan) ;; *) die "--expo-host must be tunnel or lan" ;; esac
 
 # ── Preconditions ────────────────────────────────────────────────────────────
@@ -58,6 +58,7 @@ if command -v apt-get >/dev/null; then
   command -v tesseract >/dev/null || missing+=(tesseract-ocr tesseract-ocr-eng)
   python3 -c 'import ensurepip' 2>/dev/null || missing+=(python3-venv)
   command -v curl >/dev/null || missing+=(curl)
+  command -v ss >/dev/null || missing+=(iproute2)
   if [[ ${#missing[@]} -gt 0 ]]; then
     echo "Installing system packages: ${missing[*]}"
     sudo apt-get update -qq
@@ -84,7 +85,32 @@ step "Deployment config ($CONFIG)"
 # shellcheck source=config.env.example
 source "$CONFIG"
 [[ "$API_MODE" != "url" || -n "$API_PUBLIC_URL" ]] || die "API_MODE=url needs --api-url (or API_PUBLIC_URL in $CONFIG)"
+
+# Ports: our own services are stopped first (re-runs), then anything else
+# listening on a configured port pushes it to the next free one.
+sudo systemctl stop digger-backend digger-expo 2>/dev/null || true
+port_busy() { ss -Hltn "sport = :$1" 2>/dev/null | grep -q .; }
+free_port_from() {
+  local p="$1"
+  while port_busy "$p" || [[ "$p" == "${2:-}" ]]; do p=$((p + 1)); done
+  echo "$p"
+}
+new_backend_port="$(free_port_from "$BACKEND_PORT")"
+if [[ "$new_backend_port" != "$BACKEND_PORT" ]]; then
+  warn "Port $BACKEND_PORT is already in use by another program — the backend will use $new_backend_port."
+  BACKEND_PORT="$new_backend_port"
+  set_var "$CONFIG" BACKEND_PORT "$BACKEND_PORT"
+fi
+new_expo_port="$(free_port_from "$EXPO_PORT" "$BACKEND_PORT")"
+if [[ "$new_expo_port" != "$EXPO_PORT" ]]; then
+  warn "Port $EXPO_PORT is already in use by another program — Expo will use $new_expo_port."
+  EXPO_PORT="$new_expo_port"
+  set_var "$CONFIG" EXPO_PORT "$EXPO_PORT"
+fi
 echo "API_MODE=$API_MODE  EXPO_HOST=$EXPO_HOST  BACKEND_PORT=$BACKEND_PORT  EXPO_PORT=$EXPO_PORT"
+if [[ "$API_MODE" == "expo" && "$EXPO_HOST" == "lan" ]]; then
+  warn "API_MODE=expo with EXPO_HOST=lan: the phone must be on the same network as this server."
+fi
 
 if [[ "$API_MODE" == "cloudflare" ]] && ! command -v cloudflared >/dev/null; then
   case "$(uname -m)" in

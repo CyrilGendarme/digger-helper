@@ -231,7 +231,7 @@ const LabelScreen: React.FC = () => {
                 <Text style={styles.sectionHeader}>Added by you</Text>
                 {manualFields.map((item, index) => renderRow(item, index, true))}
               </>
-            ) : null
+            ) : undefined
           }
         />
       )}

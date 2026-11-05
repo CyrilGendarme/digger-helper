@@ -5,11 +5,6 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "splash": {
-      "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#111111"
-    },
     "ios": {
       "supportsTablet": false,
       "infoPlist": {
@@ -21,14 +16,34 @@
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#111111"
       },
-      "permissions": ["CAMERA", "RECORD_AUDIO"]
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO"
+      ]
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
-      ["expo-camera", { "cameraPermission": "Used to scan record sleeves for OCR." }],
-      "expo-secure-store"
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Used to scan record sleeves for OCR."
+        }
+      ],
+      "expo-secure-store",
+      "expo-status-bar",
+      "expo-font",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "backgroundColor": "#111111",
+          "resizeMode": "contain",
+          "enableFullScreenImage_legacy": true
+        }
+      ],
+      "expo-splash-screen"
     ],
     "extra": {}
   }
